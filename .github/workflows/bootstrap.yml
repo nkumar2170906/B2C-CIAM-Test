@@ -142,18 +142,24 @@ jobs:
 
       - name: Generate Graphical Architecture Diagram
         run: |
-          # 1. Download and extract the verified native Inframap tool
-          curl -sSfL "https://github.com" -o inframap.tar.gz
-          tar -xzf inframap.tar.gz inframap
-          chmod +x inframap
+          # 1. Set up the Go environment on the runner
+          sudo apt-get update && sudo apt-get install -y golang-go graphviz
+          
+          # 2. Install Inframap using Go's native compilation engine
+          go install ://github.com
+
+          # 3. Add the Go binary path to the local session environment
+          export PATH=$PATH:$(go env GOPATH)/bin
+
+          # 4. Create the target documentation directory
           mkdir -p docs
-          
-          # 2. Run the graph generator explicitly against our local JSON plan file
-          ./inframap generate bootstrap/plan.json --printer=dot > docs/topology.dot
-          
-          # 3. Render the graph into a clean visual PNG image using the system's graphviz engine
-          sudo apt-get update && sudo apt-get install -y graphviz
+
+          # 5. Generate the graph from your local JSON plan file
+          inframap generate bootstrap/plan.json --printer=dot > docs/topology.dot
+
+          # 6. Render the output file into a clean visual PNG image
           dot -Tpng docs/topology.dot -o ./topology-map.png
+                
         working-directory: "."
         
       - name: Create or verify pull request
