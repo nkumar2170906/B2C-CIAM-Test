@@ -35,10 +35,12 @@ jobs:
           source_tree="$(git rev-parse 'HEAD^{tree}')"
           git fetch origin main
           base_sha="$(git rev-parse origin/main)"
+
           if ! git merge-base --is-ancestor "$base_sha" "$source_sha"; then
             echo "The feature/RHDS-Terraform branch must include the current main branch before promotion." >&2
             exit 1
           fi
+
           commit_count="$(git rev-list --count "$base_sha..$source_sha")"
           if [[ "$commit_count" -eq 0 ]]; then
             echo "No commits to promote; feature/RHDS-Terraform already matches main."
@@ -46,6 +48,7 @@ jobs:
           else
             echo "has_changes=true" >> "$GITHUB_OUTPUT"
           fi
+
           echo "source_sha=$source_sha" >> "$GITHUB_OUTPUT"
           echo "source_tree=$source_tree" >> "$GITHUB_OUTPUT"
           echo "base_sha=$base_sha" >> "$GITHUB_OUTPUT"
@@ -99,69 +102,85 @@ jobs:
         uses: actions/checkout@v4
         with:
           ref: ${{ needs.terraform_plan.outputs.source_sha }}
-      
+
       - name: Setup Terraform
         uses: hashicorp/setup-terraform@v3
         with:
           terraform_version: "1.16.2"
           terraform_wrapper: false
-      
-          # FIX START: Authenticates to AWS so the provider schema can be fetched securely
+
       - name: Configure AWS Credentials
         uses: aws-actions/configure-aws-credentials@v4
         with:
           role-to-assume: ${{ secrets.AWS_NONPROD_OIDC_ROLE_ARN }}
           aws-region: eu-central-1
-          
+
       - name: Download Terraform Plan Artifact
         uses: actions/download-artifact@v4
         with:
           name: terraform-plan
           path: ./bootstrap
-          
-      # FIX START: Downloads the AWS provider plugin so 'terraform show' can read it
+
       - name: Terraform Init
         run: terraform init
         working-directory: "./bootstrap"
-     
 
-    # Converts the binary plan file into structural JSON for plotting
       - name: Transform Plan to JSON
         run: |
-             terraform show -json tfplan > plan.json
-             mkdir -p docs
+          terraform show -json tfplan > plan.json
+          mkdir -p docs
         working-directory: "./bootstrap"
-        
-    
-    # WOW Factor: Parses the infrastructure changes into an architecture topology map image
-    #  - name: Generate Graphical Architecture Diagram
-    #    uses: erzz/inframap-action@v1
-    #    with:
-    #      plan-json: ./bootstrap/plan.json
-    #      output: ./topology-map.png
 
       - name: Generate Graphical Architecture Diagram
+        shell: bash
         run: |
-          # 1. Set up the Go environment on the runner
-          sudo apt-get update && sudo apt-get install -y graphviz jq
-        
-          # 2. Convert the clean plan JSON into a standard Graphviz DOT flowchart structure
-          # It dynamically loops through the plan actions and draws connections automatically
-          
+          sudo apt-get update && sudo apt-get install -y graphviz
+
           mkdir -p docs
 
-          jq -r '
-            echo "digraph G {";
-            .resource_changes[]? | select(.change.actions[] != "no-op") | 
-            "  \"\(.type).\(.name)\" [label=\"\(.type)\n\(.name)\n(\(.change.actions | join(",")))\", shape=box, color=blue];";
-            echo "}"
-          ' bootstrap/plan.json > docs/topology.dot || echo "digraph G { \"VPC Layer\" -> \"S3 Backend Storage Component\"; }" > docs/topology.dot
-          
-          # 3. Render the output file into a clean visual PNG image
+          python - <<'PY'
+          import json
+          from pathlib import Path
+
+          plan_path = Path("bootstrap/plan.json")
+          out_path = Path("docs/topology.dot")
+
+          try:
+              with plan_path.open("r", encoding="utf-8") as f:
+                  data = json.load(f)
+          except Exception:
+              out_path.write_text(
+                  'digraph G { "VPC Layer" -> "S3 Backend Storage Component"; }\n',
+                  encoding="utf-8"
+              )
+              raise SystemExit(0)
+
+          lines = ['digraph G {']
+          seen = set()
+
+          for resource in data.get("resource_changes", []):
+              change = resource.get("change", {})
+              actions = change.get("actions", [])
+              if not actions or all(a == "no-op" for a in actions):
+                  continue
+
+              rtype = resource.get("type", "unknown")
+              name = resource.get("name", "unknown")
+              key = f"{rtype}.{name}"
+              if key in seen:
+                  continue
+              seen.add(key)
+
+              label = f"{rtype}\\n{name}\\n({','.join(actions)})"
+              lines.append(f'  "{key}" [label="{label}", shape=box, color=blue];')
+
+          lines.append("}")
+          out_path.write_text("\n".join(lines) + "\n", encoding="utf-8")
+          PY
+
           dot -Tpng docs/topology.dot -o ./topology-map.png
-                
         working-directory: "."
-        
+
       - name: Create or verify pull request
         id: pr
         env:
@@ -170,29 +189,33 @@ jobs:
           BASE_SHA: ${{ needs.terraform_plan.outputs.base_sha }}
         shell: bash
         run: |
-          pr_url="$(gh pr list --base main --head feature/RHDS-Terraform --state open --json url --jq '.[0].url')"
+          pr_url="$(gh pr list --base main --head feature/RHDS-Terraform --state open --json url --jq '.[0].url // empty')"
+
           if [[ -z "$pr_url" ]]; then
             pr_url="$(gh pr create --base main --head feature/RHDS-Terraform \
               --title "Promote feature/RHDS-Terraform to main" \
               --body "Terraform plan passed for commit $SOURCE_SHA.")"
           fi
 
-          pr_head="$(gh pr view "$pr_url" --json headRefOid --jq '.headRefOid')"
-          pr_base="$(gh pr view "$pr_url" --json baseRefOid --jq '.baseRefOid')"
-          if [[ "$pr_head" != "$SOURCE_SHA" || "$pr_base" != "$BASE_SHA" ]]; then
-            echo "The PR head or main base changed after planning. Push an updated feature/RHDS-Terraform branch and rerun." >&2
-            exit 1
+          if [[ -n "$pr_url" ]]; then
+            pr_head="$(gh pr view "$pr_url" --json headRefOid --jq '.headRefOid')"
+            pr_base="$(gh pr view "$pr_url" --json baseRefOid --jq '.baseRefOid')"
+
+            if [[ "$pr_head" != "$SOURCE_SHA" || "$pr_base" != "$BASE_SHA" ]]; then
+              echo "The PR head or main base changed after planning. Push an updated feature/RHDS-Terraform branch and rerun." >&2
+              exit 1
+            fi
           fi
+
           echo "url=$pr_url" >> "$GITHUB_OUTPUT"
-    
-          # Attaches the newly generated layout graphic directly to your workflow dashboard
+
       - name: Upload Visual Topology Artifact
         uses: actions/upload-artifact@v4
         with:
           name: architecture-topology-map
           path: ./topology-map.png
           retention-days: 7
-
+          if-no-files-found: error
 
   merge_to_main:
     name: "3. Approve and merge to main"
@@ -216,10 +239,12 @@ jobs:
         run: |
           pr_head="$(gh pr view "$PR_URL" --json headRefOid --jq '.headRefOid')"
           pr_base="$(gh pr view "$PR_URL" --json baseRefOid --jq '.baseRefOid')"
+
           if [[ "$pr_head" != "$SOURCE_SHA" || "$pr_base" != "$BASE_SHA" ]]; then
             echo "The PR changed while waiting for production approval. Refusing to merge an unplanned revision." >&2
             exit 1
           fi
+
           gh pr merge "$PR_URL" --merge
 
   terraform_apply:
@@ -278,19 +303,18 @@ jobs:
         run: terraform apply -input=false tfplan
         working-directory: "./bootstrap"
 
-      # WOW Factor: Generates an ADO-style graphical checklist directly on the main workflow summary dashboard
       - name: Generate Live Deployment Dashboard Summary
         if: success()
         shell: bash
         run: |
-          echo "## 🚀 Pipeline Deployment Successful!" >> \$GITHUB_STEP_SUMMARY
-          echo "" >> \$GITHUB_STEP_SUMMARY
-          echo "### 🌐 Core Network Infrastructure Status" >> \$GITHUB_STEP_SUMMARY
-          echo "- [x] 📦 **Virtual Private Cloud (VPC)** initialized successfully" >> \$GITHUB_STEP_SUMMARY
-          echo "- [x] 🗺️ **Subnet Splits:** Public & Private tiers isolated" >> \$GITHUB_STEP_SUMMARY
-          echo "- [x] 🛣️ **Internet Gateway:** Ingress route tables mapped" >> \$GITHUB_STEP_SUMMARY
-          echo "" >> \$GITHUB_STEP_SUMMARY
-          echo "### 🖥️ Compute & Identity Routing Services Status" >> \$GITHUB_STEP_SUMMARY
-          echo "- [x] ⚖️ **Network Load Balancers (NLB):** Master & Consumer listeners active" >> \$GITHUB_STEP_SUMMARY
-          echo "- [x] 🛡️ **Security Groups:** Deep whitelisting applied for ports 443, 636, 389" >> \$GITHUB_STEP_SUMMARY
-          echo "- [x] 💻 **EC2 Cluster Nodes:** \`ec2-master-1\` and \`ec2-slave-1\` live" >> \$GITHUB_STEP_SUMMARY  
+          echo "## 🚀 Pipeline Deployment Successful!" >> "$GITHUB_STEP_SUMMARY"
+          echo "" >> "$GITHUB_STEP_SUMMARY"
+          echo "### 🌐 Core Network Infrastructure Status" >> "$GITHUB_STEP_SUMMARY"
+          echo "- [x] 📦 **Virtual Private Cloud (VPC)** initialized successfully" >> "$GITHUB_STEP_SUMMARY"
+          echo "- [x] 🗺️ **Subnet Splits:** Public & Private tiers isolated" >> "$GITHUB_STEP_SUMMARY"
+          echo "- [x] 🛣️ **Internet Gateway:** Ingress route tables mapped" >> "$GITHUB_STEP_SUMMARY"
+          echo "" >> "$GITHUB_STEP_SUMMARY"
+          echo "### 🖥️ Compute & Identity Routing Services Status" >> "$GITHUB_STEP_SUMMARY"
+          echo "- [x] ⚖️ **Network Load Balancers (NLB):** Master & Consumer listeners active" >> "$GITHUB_STEP_SUMMARY"
+          echo "- [x] 🛡️ **Security Groups:** Deep whitelisting applied for ports 443, 636, 389" >> "$GITHUB_STEP_SUMMARY"
+          echo "- [x] 💻 **EC2 Cluster Nodes:** \`ec2-master-1\` and \`ec2-slave-1\` live" >> "$GITHUB_STEP_SUMMARY"
