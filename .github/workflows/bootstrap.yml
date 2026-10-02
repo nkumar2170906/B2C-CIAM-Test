@@ -16,10 +16,10 @@ jobs:
       contents: read
       id-token: write
     outputs:
-      source_sha: \${{ steps.revision.outputs.source_sha }}
-      source_tree: \${{ steps.revision.outputs.source_tree }}
-      base_sha: \${{ steps.revision.outputs.base_sha }}
-      has_changes: \${{ steps.revision.outputs.has_changes }}
+      source_sha: ${{ steps.revision.outputs.source_sha }}
+      source_tree: ${{ steps.revision.outputs.source_tree }}
+      base_sha: ${{ steps.revision.outputs.base_sha }}
+      has_changes: ${{ steps.revision.outputs.has_changes }}
 
     steps:
       - name: Checkout Repository
@@ -31,29 +31,24 @@ jobs:
         id: revision
         shell: bash
         run: |
-          source_sha="\$(git rev-parse HEAD)"
-          source_tree="\$(git rev-parse 'HEAD^{tree}')"
-          
+          source_sha="$(git rev-parse HEAD)"
+          source_tree="$(git rev-parse 'HEAD^{tree}')"
           git fetch origin main
-          base_sha="\$(git rev-parse origin/main)"
-          
-          # Fixed Git syntax: Correctly checking if branch is up to date with main
-          if ! git merge-base --is-ancestor "\(base_sha" "\)source_sha"; then
+          base_sha="$(git rev-parse origin/main)"
+          if ! git merge-base --is-ancestor "$base_sha" "$source_sha"; then
             echo "The feature/RHDS-Terraform branch must include the current main branch before promotion." >&2
             exit 1
           fi
-          
-          commit_count="\$(git rev-list --count "\(base_sha..\)source_sha")"
-          if [[ "\$commit_count" -eq 0 ]]; then
+          commit_count="$(git rev-list --count "$base_sha..$source_sha")"
+          if [[ "$commit_count" -eq 0 ]]; then
             echo "No commits to promote; feature/RHDS-Terraform already matches main."
-            echo "has_changes=false" >> "\$GITHUB_OUTPUT"
+            echo "has_changes=false" >> "$GITHUB_OUTPUT"
           else
-            echo "has_changes=true" >> "\$GITHUB_OUTPUT"
+            echo "has_changes=true" >> "$GITHUB_OUTPUT"
           fi
-          
-          echo "source_sha=\(source_sha" >> "\)GITHUB_OUTPUT"
-          echo "source_tree=\(source_tree" >> "\)GITHUB_OUTPUT"
-          echo "base_sha=\(base_sha" >> "\)GITHUB_OUTPUT"
+          echo "source_sha=$source_sha" >> "$GITHUB_OUTPUT"
+          echo "source_tree=$source_tree" >> "$GITHUB_OUTPUT"
+          echo "base_sha=$base_sha" >> "$GITHUB_OUTPUT"
 
       - name: Setup Terraform
         uses: hashicorp/setup-terraform@v3
@@ -64,7 +59,7 @@ jobs:
       - name: Configure AWS Credentials
         uses: aws-actions/configure-aws-credentials@v4
         with:
-          role-to-assume: \${{ secrets.AWS_NONPROD_OIDC_ROLE_ARN }}
+          role-to-assume: ${{ secrets.AWS_NONPROD_OIDC_ROLE_ARN }}
           aws-region: eu-central-1
 
       - name: Show AWS Caller Identity
@@ -95,73 +90,58 @@ jobs:
       contents: read
       pull-requests: write
     outputs:
-      pr_url: \${{ steps.pr.outputs.url }}
+      pr_url: ${{ steps.pr.outputs.url }}
 
     steps:
       - name: Checkout Repository
         uses: actions/checkout@v4
         with:
-          ref: \${{ needs.terraform_plan.outputs.source_sha }}
-
+          ref: ${{ needs.terraform_plan.outputs.source_sha }}
+      
       - name: Setup Terraform
         uses: hashicorp/setup-terraform@v3
         with:
           terraform_version: "1.16.2"
           terraform_wrapper: false
-
       - name: Download Terraform Plan Artifact
         uses: actions/download-artifact@v4
         with:
           name: terraform-plan
-          path: ./bootstrap
-
-      # Converts the binary plan file into structural JSON for plotting
+          path: ./bootstrap  
+    # Converts the binary plan file into structural JSON for plotting
       - name: Transform Plan to JSON
         run: terraform show -json tfplan > plan.json
         working-directory: "./bootstrap"
-
-      # WOW Factor: Parses the infrastructure changes into an architecture topology map image
+        
+    # WOW Factor: Parses the infrastructure changes into an architecture topology map image
       - name: Generate Graphical Architecture Diagram
         uses: im2nguyen/inframap-action@v1
         with:
           plan-json: ./bootstrap/plan.json
           output: topology-map.png
-
+        
       - name: Create or verify pull request
         id: pr
         env:
-          GH_TOKEN: \${{ github.token }}
-          SOURCE_SHA: \${{ needs.terraform_plan.outputs.source_sha }}
-          BASE_SHA: \${{ needs.terraform_plan.outputs.base_sha }}
+          GH_TOKEN: ${{ github.token }}
+          SOURCE_SHA: ${{ needs.terraform_plan.outputs.source_sha }}
+          BASE_SHA: ${{ needs.terraform_plan.outputs.base_sha }}
         shell: bash
         run: |
-          pr_url="\$(gh pr list --base main --head feature/RHDS-Terraform --state open --json url --jq '.[0].url')"
-          if [[ -z "\$pr_url" ]]; then
-            pr_url="\$(gh pr create --base main --head feature/RHDS-Terraform \
+          pr_url="$(gh pr list --base main --head feature/RHDS-Terraform --state open --json url --jq '.[0].url')"
+          if [[ -z "$pr_url" ]]; then
+            pr_url="$(gh pr create --base main --head feature/RHDS-Terraform \
               --title "Promote feature/RHDS-Terraform to main" \
-              --body "### 🗺️ Live Structural Architecture Map
-              The following resources will be managed by this deployment:
-              
-              *(Diagram attached to current workflow execution artifacts)*
-              
-              Terraform plan passed successfully for commit \$SOURCE_SHA.")"
+              --body "Terraform plan passed for commit $SOURCE_SHA.")"
           fi
 
-          pr_head="\$(gh pr view "\$pr_url" --json headRefOid --jq '.headRefOid')"
-          pr_base="\$(gh pr view "\$pr_url" --json baseRefOid --jq '.baseRefOid')"
-          if [[ "\(pr_head" != "\)SOURCE_SHA" || "\(pr_base" != "\)BASE_SHA" ]]; then
+          pr_head="$(gh pr view "$pr_url" --json headRefOid --jq '.headRefOid')"
+          pr_base="$(gh pr view "$pr_url" --json baseRefOid --jq '.baseRefOid')"
+          if [[ "$pr_head" != "$SOURCE_SHA" || "$pr_base" != "$BASE_SHA" ]]; then
             echo "The PR head or main base changed after planning. Push an updated feature/RHDS-Terraform branch and rerun." >&2
             exit 1
           fi
-          echo "url=\(pr_url" >> "\)GITHUB_OUTPUT"
-
-      # Attaches the graphic layout file directly into the workflow artifacts container
-      - name: Upload Visual Topology Artifact
-        uses: actions/upload-artifact@v4
-        with:
-          name: architecture-topology-map
-          path: ./topology-map.png
-          retention-days: 7
+          echo "url=$pr_url" >> "$GITHUB_OUTPUT"
 
   merge_to_main:
     name: "3. Approve and merge to main"
@@ -177,19 +157,19 @@ jobs:
     steps:
       - name: Verify PR revisions and merge
         env:
-          GH_TOKEN: \${{ github.token }}
-          PR_URL: \${{ needs.prepare_pull_request.outputs.pr_url }}
-          SOURCE_SHA: \${{ needs.terraform_plan.outputs.source_sha }}
-          BASE_SHA: \${{ needs.terraform_plan.outputs.base_sha }}
+          GH_TOKEN: ${{ github.token }}
+          PR_URL: ${{ needs.prepare_pull_request.outputs.pr_url }}
+          SOURCE_SHA: ${{ needs.terraform_plan.outputs.source_sha }}
+          BASE_SHA: ${{ needs.terraform_plan.outputs.base_sha }}
         shell: bash
         run: |
-          pr_head="\$(gh pr view "\$PR_URL" --json headRefOid --jq '.headRefOid')"
-          pr_base="\$(gh pr view "\$PR_URL" --json baseRefOid --jq '.baseRefOid')"
-          if [[ "\(pr_head" != "\)SOURCE_SHA" || "\(pr_base" != "\)BASE_SHA" ]]; then
+          pr_head="$(gh pr view "$PR_URL" --json headRefOid --jq '.headRefOid')"
+          pr_base="$(gh pr view "$PR_URL" --json baseRefOid --jq '.baseRefOid')"
+          if [[ "$pr_head" != "$SOURCE_SHA" || "$pr_base" != "$BASE_SHA" ]]; then
             echo "The PR changed while waiting for production approval. Refusing to merge an unplanned revision." >&2
             exit 1
           fi
-          gh pr merge "\$PR_URL" --merge
+          gh pr merge "$PR_URL" --merge
 
   terraform_apply:
     name: "4. Apply merged code"
@@ -210,11 +190,11 @@ jobs:
 
       - name: Verify merged code matches the approved plan
         env:
-          EXPECTED_TREE: \${{ needs.terraform_plan.outputs.source_tree }}
+          EXPECTED_TREE: ${{ needs.terraform_plan.outputs.source_tree }}
         shell: bash
         run: |
-          actual_tree="\$(git rev-parse 'HEAD^{tree}')"
-          if [[ "\(actual_tree" != "\)EXPECTED_TREE" ]]; then
+          actual_tree="$(git rev-parse 'HEAD^{tree}')"
+          if [[ "$actual_tree" != "$EXPECTED_TREE" ]]; then
             echo "The main branch tree differs from the approved plan. Refusing to apply." >&2
             exit 1
           fi
@@ -227,7 +207,7 @@ jobs:
       - name: Configure AWS Credentials
         uses: aws-actions/configure-aws-credentials@v4
         with:
-          role-to-assume: \${{ secrets.AWS_NONPROD_OIDC_ROLE_ARN }}
+          role-to-assume: ${{ secrets.AWS_NONPROD_OIDC_ROLE_ARN }}
           aws-region: eu-central-1
 
       - name: Show AWS Caller Identity
@@ -262,7 +242,4 @@ jobs:
           echo "### 🖥️ Compute & Identity Routing Services Status" >> \$GITHUB_STEP_SUMMARY
           echo "- [x] ⚖️ **Network Load Balancers (NLB):** Master & Consumer listeners active" >> \$GITHUB_STEP_SUMMARY
           echo "- [x] 🛡️ **Security Groups:** Deep whitelisting applied for ports 443, 636, 389" >> \$GITHUB_STEP_SUMMARY
-          echo "- [x] 💻 **EC2 Cluster Nodes:** \`ec2-master-1\` and \`ec2-slave-1\` live" >> \$GITHUB_STEP_SUMMARY
-          echo "- [x] 📌 **Elastic IP Bindings:** Static network anchors locked" >> \$GITHUB_STEP_SUMMARY
-          echo "" >> \$GITHUB_STEP_SUMMARY
-          echo "> 🔑 *Identity Synchronization Handshake successfully prepared for the external CIAM team.*" >> \$GITHUB_STEP_SUMMARY
+          echo "- [x] 💻 **EC2 Cluster Nodes:** \`ec2-master-1\` and \`ec2-slave-1\` live" >> \$GITHUB_STEP_SUMMARY  
