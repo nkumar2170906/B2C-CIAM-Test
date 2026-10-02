@@ -53,14 +53,14 @@ jobs:
       - name: Setup Terraform
         uses: hashicorp/setup-terraform@v3
         with:
-          terraform_version: "1.16.4"
+          terraform_version: "1.16.2"
           terraform_wrapper: false
 
       - name: Configure AWS Credentials
         uses: aws-actions/configure-aws-credentials@v4
         with:
-          role-to-assume: ${{ secrets.secrets.AWS_NONPROD_OIDC_ROLE_ARN }}
-          aws-region: ${{ vars.AWS_REGION }}
+          role-to-assume: ${{ secrets.AWS_NONPROD_OIDC_ROLE_ARN }}
+          aws-region: eu-central-1
 
       - name: Show AWS Caller Identity
         run: aws sts get-caller-identity
@@ -180,13 +180,13 @@ jobs:
       - name: Setup Terraform
         uses: hashicorp/setup-terraform@v3
         with:
-          terraform_version: "1.16.4"
+          terraform_version: "1.16.2"
 
       - name: Configure AWS Credentials
         uses: aws-actions/configure-aws-credentials@v4
         with:
           role-to-assume: ${{ secrets.AWS_NONPROD_OIDC_ROLE_ARN }}
-          aws-region: ${{ vars.AWS_REGION }}
+          aws-region: eu-central-1
 
       - name: Show AWS Caller Identity
         run: aws sts get-caller-identity
