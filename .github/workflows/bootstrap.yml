@@ -84,6 +84,21 @@ jobs:
           retention-days: 1
           if-no-files-found: error
 
+      - name: Record no-change marker
+        if: ${{ steps.revision.outputs.has_changes == 'false' }}
+        shell: bash
+        run: |
+          echo "No commits to promote; feature/RHDS-Terraform already matches main." > no-changes.txt
+
+      - name: Upload no-change artifact
+        if: ${{ steps.revision.outputs.has_changes == 'false' }}
+        uses: actions/upload-artifact@v4
+        with:
+          name: terraform-plan-no-changes
+          path: ./no-changes.txt
+          retention-days: 1
+          if-no-files-found: error
+
   prepare_pull_request:
     name: "2. Prepare PR to main"
     needs: terraform_plan
@@ -131,7 +146,7 @@ jobs:
           mkdir -p docs
         working-directory: "./bootstrap"
 
-      - name: Generate Graphical Architecture Diagram (with diagnostics)
+      - name: Generate Graphical Architecture Diagram (safe version)
         shell: bash
         run: |
           set -euo pipefail
@@ -141,16 +156,14 @@ jobs:
           sudo apt-get install -y graphviz python3
 
           mkdir -p docs
-          echo "Checking plan file..."
-          ls -la bootstrap || true
-          ls -la bootstrap || true
 
           if [[ ! -f bootstrap/plan.json ]]; then
-            echo "ERROR: bootstrap/plan.json does not exist"
+            echo "bootstrap/plan.json missing; writing fallback topology."
+            echo 'digraph G { "VPC Layer" -> "S3 Backend Storage Component"; }' > docs/topology.dot
+            dot -Tpng docs/topology.dot -o topology-map.png
             exit 0
           fi
 
-          echo "Creating DOT file from plan.json..."
           python3 - <<'PY'
           import json
           from pathlib import Path
@@ -160,12 +173,8 @@ jobs:
 
           try:
               data = json.loads(plan.read_text(encoding="utf-8"))
-          except Exception as e:
-              out.write_text(
-                  'digraph G { "VPC Layer" -> "S3 Backend Storage Component"; }\n',
-                  encoding="utf-8"
-              )
-              print("Fallback DOT written due to JSON parse error:", e)
+          except Exception:
+              out.write_text('digraph G { "VPC Layer" -> "S3 Backend Storage Component"; }\n', encoding="utf-8")
               raise SystemExit(0)
 
           lines = ['digraph G {']
@@ -189,28 +198,12 @@ jobs:
 
           lines.append("}")
           out.write_text("\n".join(lines) + "\n", encoding="utf-8")
-          print(f"DOT generated: {out}")
           PY
 
-          echo "DOT preview:"
-          sed -n '1,120p' docs/topology.dot || true
-
-          echo "Rendering PNG..."
           dot -Tpng docs/topology.dot -o topology-map.png
 
-          echo "Files after render:"
-          ls -la
-          ls -la docs || true
-          ls -la topology-map.png || true
-
-          if [[ -f topology-map.png ]]; then
-            echo "PNG exists"
-            du -h topology-map.png
-            sha256sum topology-map.png || true
-          else
-            echo "PNG was not created"
-            exit 0
-          fi
+          echo "Files created:"
+          ls -la docs topology-map.png || true
         working-directory: "."
 
       - name: Create or verify pull request
