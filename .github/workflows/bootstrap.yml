@@ -1,0 +1,83 @@
+name: "Terraform Bootstrap Pipeline"
+
+on:
+  pull_request:
+    branches:
+      - "main"
+    paths:
+      - "bootstrap/**"
+  push:
+    branches:
+      - "main"
+    paths:
+      - "bootstrap/**"
+
+permissions:
+  id-token: write # Mandatory for secure secretless AWS OIDC authentication
+  contents: read  # Mandatory to clone repository code templates
+
+jobs:
+  terraform-plan:
+    name: "Speculative Peer Review Plan"
+    if: github.event_name == 'pull_request' && github.head_ref == 'feature/RHDS-Terraform'
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: ./bootstrap
+
+    steps:
+      - name: Checkout Source Code
+        uses: actions/checkout@v4
+
+      - name: Set Up Terraform Core Engine
+        uses: hashicorp/setup-terraform@v3
+        with:
+          terraform_version: "1.16.2"
+
+      - name: Verify Code Structure Formatting
+        run: terraform fmt -check
+
+      - name: Connect to AWS via Secure OIDC Integration
+        uses: aws-actions/configure-aws-credentials@v4
+        with:
+          role-to-assume: ${{ secrets.AWS_NONPROD_OIDC_ROLE_ARN }}
+          aws-region: eu-central-1
+          audience: ://amazonaws.com
+
+      - name: Initialize Local Work Environment
+        run: terraform init
+
+      # Compiles the explicit blueprint modifications for your reviewers to inspect inside the PR
+      - name: Compile Dry-Run Infrastructure Layout (Plan)
+        run: terraform plan -input=false
+
+  terraform-apply:
+    name: "Execute Bootstrap Engine"
+    if: github.event_name == 'push' && github.ref == 'refs/heads/main'
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: ./bootstrap
+
+    steps:
+      - name: Checkout Source Code
+        uses: actions/checkout@v4
+
+      - name: Set Up Terraform Core Engine
+        uses: hashicorp/setup-terraform@v3
+        with:
+          terraform_version: "1.16.2"
+
+      - name: Connect to AWS via Secure OIDC Integration
+        uses: aws-actions/configure-aws-credentials@v4
+        with:
+          role-to-assume: ${{ secrets.AWS_NONPROD_OIDC_ROLE_ARN }}
+          aws-region: eu-central-1
+          audience: ://amazonaws.com
+
+      - name: Initialize Local Work Environment
+        run: terraform init
+
+      # Safely stands up the raw S3 bucket and DynamoDB locking systems
+      - name: Provision Core Storage and Lock Entities
+        run: terraform apply -auto-approve -input=false
