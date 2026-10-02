@@ -103,7 +103,8 @@ jobs:
         with:
           terraform_version: "1.16.2"
           terraform_wrapper: false
-     # FIX START: Authenticates to AWS so the provider schema can be fetched securely
+      
+          # FIX START: Authenticates to AWS so the provider schema can be fetched securely
       - name: Configure AWS Credentials
         uses: aws-actions/configure-aws-credentials@v4
         with:
