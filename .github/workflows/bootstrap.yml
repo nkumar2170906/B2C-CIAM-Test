@@ -148,6 +148,8 @@ jobs:
           # 2. Convert the clean plan JSON into a standard Graphviz DOT flowchart structure
           # It dynamically loops through the plan actions and draws connections automatically
           
+          mkdir -p docs
+
           jq -r '
             echo "digraph G {";
             .resource_changes[]? | select(.change.actions[] != "no-op") | 
