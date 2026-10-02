@@ -42,7 +42,7 @@ jobs:
         with:
           role-to-assume: ${{ secrets.AWS_NONPROD_OIDC_ROLE_ARN }}
           aws-region: eu-central-1
-          audience: ://amazonaws.com
+          audience: sts.amazonaws.com
 
       - name: Initialize Local Work Environment
         run: terraform init
@@ -73,7 +73,7 @@ jobs:
         with:
           role-to-assume: ${{ secrets.AWS_NONPROD_OIDC_ROLE_ARN }}
           aws-region: eu-central-1
-          audience: ://amazonaws.com
+          audience: sts.amazonaws.com
 
       - name: Initialize Local Work Environment
         run: terraform init
