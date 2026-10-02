@@ -143,21 +143,15 @@ jobs:
       - name: Generate Graphical Architecture Diagram
         run: |
           # 1. Set up the Go environment on the runner
-          sudo apt-get update && sudo apt-get install -y golang-go graphviz
+          sudo apt-get update && sudo apt-get install -y graphviz
           
           # 2. Install Inframap using Go's native compilation engine
-          go install ://github.com
-
-          # 3. Add the Go binary path to the local session environment
-          export PATH=$PATH:$(go env GOPATH)/bin
-
-          # 4. Create the target documentation directory
           mkdir -p docs
 
-          # 5. Generate the graph from your local JSON plan file
-          inframap generate bootstrap/plan.json --printer=dot > docs/topology.dot
+          # 3. Add the Go binary path to the local session environment
+          go run github.com/im2nguyen/inframap@v0.6.0 generate bootstrap/plan.json --printer=dot > docs/topology.dot
 
-          # 6. Render the output file into a clean visual PNG image
+          # 4. Render the output file into a clean visual PNG image
           dot -Tpng docs/topology.dot -o ./topology-map.png
                 
         working-directory: "."
