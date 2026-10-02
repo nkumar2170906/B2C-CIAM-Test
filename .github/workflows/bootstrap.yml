@@ -132,12 +132,28 @@ jobs:
              mkdir -p docs
         working-directory: "./bootstrap"
         
+    
     # WOW Factor: Parses the infrastructure changes into an architecture topology map image
+    #  - name: Generate Graphical Architecture Diagram
+    #    uses: erzz/inframap-action@v1
+    #    with:
+    #      plan-json: ./bootstrap/plan.json
+    #      output: ./topology-map.png
+
       - name: Generate Graphical Architecture Diagram
-        uses: erzz/inframap-action@v1
-        with:
-          plan-json: ./bootstrap/plan.json
-          output: ./topology-map.png
+        run: |
+          # 1. Download and extract the verified native Inframap tool
+          curl -L -o inframap.tar.gz https://github.com
+          tar -xzf inframap.tar.gz inframap
+          chmod +x inframap
+          
+          # 2. Run the graph generator explicitly against our local JSON plan file
+          ./inframap generate bootstrap/plan.json --printer=dot > docs/topology.dot
+          
+          # 3. Render the graph into a clean visual PNG image using the system's graphviz engine
+          sudo apt-get update && sudo apt-get install -y graphviz
+          dot -Tpng docs/topology.dot -o ./topology-map.png
+        working-directory: "."
         
       - name: Create or verify pull request
         id: pr
@@ -161,6 +177,15 @@ jobs:
             exit 1
           fi
           echo "url=$pr_url" >> "$GITHUB_OUTPUT"
+    
+          # Attaches the newly generated layout graphic directly to your workflow dashboard
+      - name: Upload Visual Topology Artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: architecture-topology-map
+          path: ./topology-map.png
+          retention-days: 7
+
 
   merge_to_main:
     name: "3. Approve and merge to main"
