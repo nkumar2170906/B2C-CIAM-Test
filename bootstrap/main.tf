@@ -13,19 +13,21 @@ provider "aws" {
   region = var.aws_region
 }
 
-/*
-# Add this temporarily to your bootstrap/main.tf
-import {
-  to = aws_s3_bucket.tf_state
-  id = "b2c-ciam-tfstate-nonprod" # Your exact existing S3 bucket name
-}
-
 
 # =========================================================================
 # 1. SECURE S3 BUCKET FOR REMOTE TERRAFORM STATE STORAGE
 # =========================================================================
 
+resource "aws_s3_bucket" "tf_state10" {
+
+  bucket        = var.s3_bucket_name1
+  //force_destroy = false # Protects structural environment histories from accidental destruction
+
+  tags = merge(var.global_tags, { Name = var.s3_bucket_name1 })
+}
+/*
 resource "aws_s3_bucket" "tf_state" {
+
   bucket        = var.s3_bucket_name
   force_destroy = false # Protects structural environment histories from accidental destruction
 

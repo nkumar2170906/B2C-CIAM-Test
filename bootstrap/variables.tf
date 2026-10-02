@@ -8,6 +8,12 @@ variable "s3_bucket_name" {
   description = "Globally unique name for the state storage S3 container"
 }
 
+variable "s3_bucket_name1" {
+  type        = string
+  description = "Globally unique name for the state storage S3 container"
+}
+
+
 variable "dynamodb_table_name" {
   type        = string
   description = "Name for the concurrent state locking DynamoDB table"
