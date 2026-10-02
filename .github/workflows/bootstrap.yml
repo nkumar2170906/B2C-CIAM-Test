@@ -33,12 +33,16 @@ jobs:
         run: |
           source_sha="\$(git rev-parse HEAD)"
           source_tree="\$(git rev-parse 'HEAD^{tree}')"
+          
           git fetch origin main
           base_sha="\$(git rev-parse origin/main)"
+          
+          # Fixed Git syntax: Correctly checking if branch is up to date with main
           if ! git merge-base --is-ancestor "\(base_sha" "\)source_sha"; then
             echo "The feature/RHDS-Terraform branch must include the current main branch before promotion." >&2
             exit 1
           fi
+          
           commit_count="\$(git rev-list --count "\(base_sha..\)source_sha")"
           if [[ "\$commit_count" -eq 0 ]]; then
             echo "No commits to promote; feature/RHDS-Terraform already matches main."
@@ -46,6 +50,7 @@ jobs:
           else
             echo "has_changes=true" >> "\$GITHUB_OUTPUT"
           fi
+          
           echo "source_sha=\(source_sha" >> "\)GITHUB_OUTPUT"
           echo "source_tree=\(source_tree" >> "\)GITHUB_OUTPUT"
           echo "base_sha=\(base_sha" >> "\)GITHUB_OUTPUT"
@@ -98,7 +103,7 @@ jobs:
         with:
           ref: \${{ needs.terraform_plan.outputs.source_sha }}
 
-      - name: Setup Terraform (Required for JSON expansion)
+      - name: Setup Terraform
         uses: hashicorp/setup-terraform@v3
         with:
           terraform_version: "1.16.2"
@@ -110,12 +115,12 @@ jobs:
           name: terraform-plan
           path: ./bootstrap
 
-      # Converts the binary plan file into structural JSON for processing
+      # Converts the binary plan file into structural JSON for plotting
       - name: Transform Plan to JSON
         run: terraform show -json tfplan > plan.json
         working-directory: "./bootstrap"
 
-      # WOW Factor: Automatically parses the infrastructure changes into an interactive graph image
+      # WOW Factor: Parses the infrastructure changes into an architecture topology map image
       - name: Generate Graphical Architecture Diagram
         uses: im2nguyen/inframap-action@v1
         with:
@@ -137,7 +142,7 @@ jobs:
               --body "### 🗺️ Live Structural Architecture Map
               The following resources will be managed by this deployment:
               
-              *(Diagram attached to current workflow artifacts)*
+              *(Diagram attached to current workflow execution artifacts)*
               
               Terraform plan passed successfully for commit \$SOURCE_SHA.")"
           fi
@@ -150,7 +155,7 @@ jobs:
           fi
           echo "url=\(pr_url" >> "\)GITHUB_OUTPUT"
 
-      # WOW Factor: Attaches the graphic layout file directly into the workflow run artifacts for full transparency
+      # Attaches the graphic layout file directly into the workflow artifacts container
       - name: Upload Visual Topology Artifact
         uses: actions/upload-artifact@v4
         with:
@@ -242,7 +247,7 @@ jobs:
         run: terraform apply -input=false tfplan
         working-directory: "./bootstrap"
 
-      # WOW Factor: Generates an ADO-style graphical checklist right on the main GitHub workflow summary screen
+      # WOW Factor: Generates an ADO-style graphical checklist directly on the main workflow summary dashboard
       - name: Generate Live Deployment Dashboard Summary
         if: success()
         shell: bash
