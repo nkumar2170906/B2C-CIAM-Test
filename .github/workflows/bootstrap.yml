@@ -90,7 +90,7 @@ jobs:
       contents: read
       pull-requests: write
       id-token: write
-      
+
     outputs:
       pr_url: ${{ steps.pr.outputs.url }}
 
@@ -127,7 +127,8 @@ jobs:
 
     # Converts the binary plan file into structural JSON for plotting
       - name: Transform Plan to JSON
-        run: terraform show -json tfplan > plan.json
+        run: |
+             terraform show -json tfplan > plan.json
              mkdir -p docs
         working-directory: "./bootstrap"
         
