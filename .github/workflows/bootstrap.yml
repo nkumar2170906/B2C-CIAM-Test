@@ -1,83 +1,206 @@
-name: "Terraform Bootstrap Pipeline"
+name: "Terraform Bootstrap Pipeline Deployment Flow"
 
 on:
-  pull_request:
-    branches:
-      - "main"
-    paths:
-      - "bootstrap/**"
   push:
     branches:
-      - "main"
-    paths:
-      - "bootstrap/**"
+      - feature/RHDS-Terraform
 
 permissions:
-  id-token: write # Mandatory for secure secretless AWS OIDC authentication
-  contents: read  # Mandatory to clone repository code templates
+  contents: read
 
 jobs:
-  terraform-plan:
-    name: "Speculative Peer Review Plan"
-    if: github.event_name == 'pull_request' && github.head_ref == 'feature/RHDS-Terraform'
+  terraform_plan:
+    name: "1. Run Terraform Plan"
     runs-on: ubuntu-latest
-    defaults:
-      run:
-        working-directory: ./bootstrap
+    permissions:
+      contents: read
+      id-token: write
+    outputs:
+      source_sha: ${{ steps.revision.outputs.source_sha }}
+      source_tree: ${{ steps.revision.outputs.source_tree }}
+      base_sha: ${{ steps.revision.outputs.base_sha }}
+      has_changes: ${{ steps.revision.outputs.has_changes }}
 
     steps:
-      - name: Checkout Source Code
+      - name: Checkout Repository
         uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
 
-      - name: Set Up Terraform Core Engine
+      - name: Record source and main revisions
+        id: revision
+        shell: bash
+        run: |
+          source_sha="$(git rev-parse HEAD)"
+          source_tree="$(git rev-parse 'HEAD^{tree}')"
+          git fetch origin main
+          base_sha="$(git rev-parse origin/main)"
+          if ! git merge-base --is-ancestor "$base_sha" "$source_sha"; then
+            echo "The test branch must include the current main branch before promotion." >&2
+            exit 1
+          fi
+          commit_count="$(git rev-list --count "$base_sha..$source_sha")"
+          if [[ "$commit_count" -eq 0 ]]; then
+            echo "No commits to promote; test already matches main."
+            echo "has_changes=false" >> "$GITHUB_OUTPUT"
+          else
+            echo "has_changes=true" >> "$GITHUB_OUTPUT"
+          fi
+          echo "source_sha=$source_sha" >> "$GITHUB_OUTPUT"
+          echo "source_tree=$source_tree" >> "$GITHUB_OUTPUT"
+          echo "base_sha=$base_sha" >> "$GITHUB_OUTPUT"
+
+      - name: Setup Terraform
         uses: hashicorp/setup-terraform@v3
         with:
-          terraform_version: "1.16.2"
+          terraform_version: "1.16.4"
+          terraform_wrapper: false
 
-      - name: Verify Code Structure Formatting
-        run: terraform fmt -check
+      - name: Configure AWS Credentials
+        uses: aws-actions/configure-aws-credentials@v4
+        with:
+          role-to-assume: ${{ secrets.AWS_ACCESS_OIDC_ROLE }}
+          aws-region: ${{ vars.AWS_REGION }}
 
-      - name: Connect to AWS via Secure OIDC Integration
+      - name: Show AWS Caller Identity
+        run: aws sts get-caller-identity
+
+      - name: Terraform Init
+        run: terraform init
+        working-directory: "./bootstrap"
+
+      - name: Terraform Plan
+        run: terraform plan -input=false -out=tfplan
+        working-directory: "./bootstrap"
+
+      - name: Upload Terraform Plan
+        uses: actions/upload-artifact@v4
+        with:
+          name: terraform-plan
+          path: ./bootstrap/tfplan
+          retention-days: 1
+          if-no-files-found: error
+
+  prepare_pull_request:
+    name: "2. Prepare PR to main"
+    needs: terraform_plan
+    if: needs.terraform_plan.outputs.has_changes == 'true'
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      pull-requests: write
+    outputs:
+      pr_url: ${{ steps.pr.outputs.url }}
+
+    steps:
+      - name: Checkout Repository
+        uses: actions/checkout@v4
+        with:
+          ref: ${{ needs.terraform_plan.outputs.source_sha }}
+
+      - name: Create or verify pull request
+        id: pr
+        env:
+          GH_TOKEN: ${{ github.token }}
+          SOURCE_SHA: ${{ needs.terraform_plan.outputs.source_sha }}
+          BASE_SHA: ${{ needs.terraform_plan.outputs.base_sha }}
+        shell: bash
+        run: |
+          pr_url="$(gh pr list --base main --head test --state open --json url --jq '.[0].url')"
+          if [[ -z "$pr_url" ]]; then
+            pr_url="$(gh pr create --base main --head test \
+              --title "Promote test to main" \
+              --body "Terraform plan passed for commit $SOURCE_SHA.")"
+          fi
+
+          pr_head="$(gh pr view "$pr_url" --json headRefOid --jq '.headRefOid')"
+          pr_base="$(gh pr view "$pr_url" --json baseRefOid --jq '.baseRefOid')"
+          if [[ "$pr_head" != "$SOURCE_SHA" || "$pr_base" != "$BASE_SHA" ]]; then
+            echo "The PR head or main base changed after planning. Push an updated test branch and rerun." >&2
+            exit 1
+          fi
+          echo "url=$pr_url" >> "$GITHUB_OUTPUT"
+
+  merge_to_main:
+    name: "3. Approve and merge to main"
+    needs:
+      - terraform_plan
+      - prepare_pull_request
+    runs-on: ubuntu-latest
+    environment: development
+    permissions:
+      contents: write
+      pull-requests: write
+
+    steps:
+      - name: Verify PR revisions and merge
+        env:
+          GH_TOKEN: ${{ github.token }}
+          PR_URL: ${{ needs.prepare_pull_request.outputs.pr_url }}
+          SOURCE_SHA: ${{ needs.terraform_plan.outputs.source_sha }}
+          BASE_SHA: ${{ needs.terraform_plan.outputs.base_sha }}
+        shell: bash
+        run: |
+          pr_head="$(gh pr view "$PR_URL" --json headRefOid --jq '.headRefOid')"
+          pr_base="$(gh pr view "$PR_URL" --json baseRefOid --jq '.baseRefOid')"
+          if [[ "$pr_head" != "$SOURCE_SHA" || "$pr_base" != "$BASE_SHA" ]]; then
+            echo "The PR changed while waiting for production approval. Refusing to merge an unplanned revision." >&2
+            exit 1
+          fi
+          gh pr merge "$PR_URL" --merge
+
+  terraform_apply:
+    name: "4. Apply merged code"
+    needs:
+      - terraform_plan
+      - merge_to_main
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      id-token: write
+
+    steps:
+      - name: Checkout main
+        uses: actions/checkout@v4
+        with:
+          ref: main
+          fetch-depth: 0
+
+      - name: Verify merged code matches the approved plan
+        env:
+          EXPECTED_TREE: ${{ needs.terraform_plan.outputs.source_tree }}
+        shell: bash
+        run: |
+          actual_tree="$(git rev-parse 'HEAD^{tree}')"
+          if [[ "$actual_tree" != "$EXPECTED_TREE" ]]; then
+            echo "The main branch tree differs from the approved plan. Refusing to apply." >&2
+            exit 1
+          fi
+
+      - name: Setup Terraform
+        uses: hashicorp/setup-terraform@v3
+        with:
+          terraform_version: "1.16.4"
+
+      - name: Configure AWS Credentials
         uses: aws-actions/configure-aws-credentials@v4
         with:
           role-to-assume: ${{ secrets.AWS_NONPROD_OIDC_ROLE_ARN }}
-          aws-region: eu-central-1
-          audience: sts.amazonaws.com
+          aws-region: ${{ vars.AWS_REGION }}
 
-      - name: Initialize Local Work Environment
+      - name: Show AWS Caller Identity
+        run: aws sts get-caller-identity
+
+      - name: Terraform Init
         run: terraform init
+        working-directory: "./bootstrap"
 
-      # Compiles the explicit blueprint modifications for your reviewers to inspect inside the PR
-      - name: Compile Dry-Run Infrastructure Layout (Plan)
-        run: terraform plan -input=false
-
-  terraform-apply:
-    name: "Execute Bootstrap Engine"
-    if: github.event_name == 'push' && github.ref == 'refs/heads/main'
-    runs-on: ubuntu-latest
-    defaults:
-      run:
-        working-directory: ./bootstrap
-
-    steps:
-      - name: Checkout Source Code
-        uses: actions/checkout@v4
-
-      - name: Set Up Terraform Core Engine
-        uses: hashicorp/setup-terraform@v3
+      - name: Download Terraform Plan
+        uses: actions/download-artifact@v4
         with:
-          terraform_version: "1.16.2"
+          name: terraform-plan
+          path: ./bootstrap
 
-      - name: Connect to AWS via Secure OIDC Integration
-        uses: aws-actions/configure-aws-credentials@v4
-        with:
-          role-to-assume: ${{ secrets.AWS_NONPROD_OIDC_ROLE_ARN }}
-          aws-region: eu-central-1
-          audience: sts.amazonaws.com
-
-      - name: Initialize Local Work Environment
-        run: terraform init
-
-      # Safely stands up the raw S3 bucket and DynamoDB locking systems
-      - name: Provision Core Storage and Lock Entities
-        run: terraform apply -auto-approve -input=false
+      - name: Terraform Apply
+        run: terraform apply -input=false tfplan
+        working-directory: "./bootstrap"
