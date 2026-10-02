@@ -84,9 +84,25 @@ jobs:
           retention-days: 1
           if-no-files-found: error
 
+      - name: Record no-change marker
+        if: ${{ steps.revision.outputs.has_changes == 'false' }}
+        shell: bash
+        run: |
+          echo "No commits to promote; feature/RHDS-Terraform already matches main." > no-changes.txt
+
+      - name: Upload no-change artifact
+        if: ${{ steps.revision.outputs.has_changes == 'false' }}
+        uses: actions/upload-artifact@v4
+        with:
+          name: terraform-plan-no-changes
+          path: ./no-changes.txt
+          retention-days: 1
+          if-no-files-found: error
+
   prepare_pull_request:
     name: "2. Prepare PR to main"
     needs: terraform_plan
+    if: needs.terraform_plan.outputs.has_changes == 'true'
     runs-on: ubuntu-latest
     permissions:
       contents: read
@@ -124,10 +140,14 @@ jobs:
         run: terraform init
         working-directory: "./bootstrap"
 
-      - name: Generate Graphical Architecture Diagram (works even when no changes)
+      - name: Transform Plan to JSON
+        run: |
+          terraform show -json tfplan > plan.json
+          mkdir -p docs
+        working-directory: "./bootstrap"
+
+      - name: Generate Graphical Architecture Diagram (safe version)
         shell: bash
-        env:
-          HAS_CHANGES: ${{ needs.terraform_plan.outputs.has_changes }}
         run: |
           set -euo pipefail
 
@@ -137,16 +157,8 @@ jobs:
 
           mkdir -p docs
 
-          if [[ "$HAS_CHANGES" != "true" ]]; then
-            echo "No changes detected. Creating placeholder topology artifact."
-            echo 'digraph G { "No Infrastructure Change" -> "No Terraform Drift Detected"; }' > docs/topology.dot
-            dot -Tpng docs/topology.dot -o topology-map.png
-            ls -la docs topology-map.png || true
-            exit 0
-          fi
-
           if [[ ! -f bootstrap/plan.json ]]; then
-            echo "No plan.json available; generating fallback topology."
+            echo "bootstrap/plan.json missing; writing fallback topology."
             echo 'digraph G { "VPC Layer" -> "S3 Backend Storage Component"; }' > docs/topology.dot
             dot -Tpng docs/topology.dot -o topology-map.png
             exit 0
@@ -189,6 +201,8 @@ jobs:
           PY
 
           dot -Tpng docs/topology.dot -o topology-map.png
+
+          echo "Files created:"
           ls -la docs topology-map.png || true
         working-directory: "."
 
@@ -198,15 +212,8 @@ jobs:
           GH_TOKEN: ${{ github.token }}
           SOURCE_SHA: ${{ needs.terraform_plan.outputs.source_sha }}
           BASE_SHA: ${{ needs.terraform_plan.outputs.base_sha }}
-          HAS_CHANGES: ${{ needs.terraform_plan.outputs.has_changes }}
         shell: bash
         run: |
-          if [[ "$HAS_CHANGES" != "true" ]]; then
-            echo "No Terraform changes to promote; skipping PR creation."
-            echo "url=" >> "$GITHUB_OUTPUT"
-            exit 0
-          fi
-
           pr_url="$(gh pr list --base main --head feature/RHDS-Terraform --state open --json url --jq '.[0].url // empty')"
 
           if [[ -z "$pr_url" ]]; then
@@ -231,18 +238,15 @@ jobs:
         uses: actions/upload-artifact@v4
         with:
           name: architecture-topology-map
-          path: |
-            ./topology-map.png
-            ./docs/topology.dot
+          path: ./topology-map.png
           retention-days: 7
-          if-no-files-found: warn
+          if-no-files-found: error
 
   merge_to_main:
     name: "3. Approve and merge to main"
     needs:
       - terraform_plan
       - prepare_pull_request
-    if: needs.terraform_plan.outputs.has_changes == 'true'
     runs-on: ubuntu-latest
     environment: development
     permissions:
@@ -273,7 +277,6 @@ jobs:
     needs:
       - terraform_plan
       - merge_to_main
-    if: needs.terraform_plan.outputs.has_changes == 'true'
     runs-on: ubuntu-latest
     permissions:
       contents: read
