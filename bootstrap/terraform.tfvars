@@ -6,5 +6,5 @@ global_tags = {
   Environment = "non-prod"
   Layer       = "bootstrap"
   ManagedBy   = "Terraform"
-  Project     = "RHDS-DirectoryServices"
+  Project     = "B2C-CIAM-Test1-RHDS"
 }
