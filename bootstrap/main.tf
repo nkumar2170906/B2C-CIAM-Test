@@ -1,3 +1,4 @@
+
 terraform {
   required_version = ">= 1.5.0"
   required_providers {
@@ -11,6 +12,14 @@ terraform {
 provider "aws" {
   region = var.aws_region
 }
+
+/*
+# Add this temporarily to your bootstrap/main.tf
+import {
+  to = aws_s3_bucket.tf_state
+  id = "b2c-ciam-tfstate-nonprod" # Your exact existing S3 bucket name
+}
+
 
 # =========================================================================
 # 1. SECURE S3 BUCKET FOR REMOTE TERRAFORM STATE STORAGE
@@ -68,3 +77,4 @@ resource "aws_dynamodb_table" "tf_locks" {
 
   tags = merge(var.global_tags, { Name = var.dynamodb_table_name })
 }
+*/

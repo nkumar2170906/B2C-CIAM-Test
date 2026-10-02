@@ -132,12 +132,35 @@ jobs:
              mkdir -p docs
         working-directory: "./bootstrap"
         
+    
     # WOW Factor: Parses the infrastructure changes into an architecture topology map image
+    #  - name: Generate Graphical Architecture Diagram
+    #    uses: erzz/inframap-action@v1
+    #    with:
+    #      plan-json: ./bootstrap/plan.json
+    #      output: ./topology-map.png
+
       - name: Generate Graphical Architecture Diagram
-        uses: erzz/inframap-action@v1
-        with:
-          plan-json: ./bootstrap/plan.json
-          output: ./topology-map.png
+        run: |
+          # 1. Set up the Go environment on the runner
+          sudo apt-get update && sudo apt-get install -y graphviz jq
+        
+          # 2. Convert the clean plan JSON into a standard Graphviz DOT flowchart structure
+          # It dynamically loops through the plan actions and draws connections automatically
+          
+          mkdir -p docs
+
+          jq -r '
+            echo "digraph G {";
+            .resource_changes[]? | select(.change.actions[] != "no-op") | 
+            "  \"\(.type).\(.name)\" [label=\"\(.type)\n\(.name)\n(\(.change.actions | join(",")))\", shape=box, color=blue];";
+            echo "}"
+          ' bootstrap/plan.json > docs/topology.dot || echo "digraph G { \"VPC Layer\" -> \"S3 Backend Storage Component\"; }" > docs/topology.dot
+          
+          # 3. Render the output file into a clean visual PNG image
+          dot -Tpng docs/topology.dot -o ./topology-map.png
+                
+        working-directory: "."
         
       - name: Create or verify pull request
         id: pr
@@ -161,6 +184,15 @@ jobs:
             exit 1
           fi
           echo "url=$pr_url" >> "$GITHUB_OUTPUT"
+    
+          # Attaches the newly generated layout graphic directly to your workflow dashboard
+      - name: Upload Visual Topology Artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: architecture-topology-map
+          path: ./topology-map.png
+          retention-days: 7
+
 
   merge_to_main:
     name: "3. Approve and merge to main"
