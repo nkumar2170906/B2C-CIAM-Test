@@ -145,6 +145,7 @@ jobs:
           # 1. Download and extract the verified native Inframap tool
           curl -sSfL "https://github.com" -o inframap
            chmod +x inframap
+           mkdir -p docs
           
           # 2. Run the graph generator explicitly against our local JSON plan file
           ./inframap generate bootstrap/plan.json --printer=dot > docs/topology.dot
