@@ -131,28 +131,41 @@ jobs:
           mkdir -p docs
         working-directory: "./bootstrap"
 
-      - name: Generate Graphical Architecture Diagram
+      - name: Generate Graphical Architecture Diagram (with diagnostics)
         shell: bash
         run: |
-          sudo apt-get update && sudo apt-get install -y graphviz
+          set -euo pipefail
+
+          echo "Installing Graphviz..."
+          sudo apt-get update -y
+          sudo apt-get install -y graphviz python3
 
           mkdir -p docs
+          echo "Checking plan file..."
+          ls -la bootstrap || true
+          ls -la bootstrap || true
 
-          python - <<'PY'
+          if [[ ! -f bootstrap/plan.json ]]; then
+            echo "ERROR: bootstrap/plan.json does not exist"
+            exit 0
+          fi
+
+          echo "Creating DOT file from plan.json..."
+          python3 - <<'PY'
           import json
           from pathlib import Path
 
-          plan_path = Path("bootstrap/plan.json")
-          out_path = Path("docs/topology.dot")
+          plan = Path("bootstrap/plan.json")
+          out = Path("docs/topology.dot")
 
           try:
-              with plan_path.open("r", encoding="utf-8") as f:
-                  data = json.load(f)
-          except Exception:
-              out_path.write_text(
+              data = json.loads(plan.read_text(encoding="utf-8"))
+          except Exception as e:
+              out.write_text(
                   'digraph G { "VPC Layer" -> "S3 Backend Storage Component"; }\n',
                   encoding="utf-8"
               )
+              print("Fallback DOT written due to JSON parse error:", e)
               raise SystemExit(0)
 
           lines = ['digraph G {']
@@ -175,10 +188,29 @@ jobs:
               lines.append(f'  "{key}" [label="{label}", shape=box, color=blue];')
 
           lines.append("}")
-          out_path.write_text("\n".join(lines) + "\n", encoding="utf-8")
+          out.write_text("\n".join(lines) + "\n", encoding="utf-8")
+          print(f"DOT generated: {out}")
           PY
 
-          dot -Tpng docs/topology.dot -o ./topology-map.png
+          echo "DOT preview:"
+          sed -n '1,120p' docs/topology.dot || true
+
+          echo "Rendering PNG..."
+          dot -Tpng docs/topology.dot -o topology-map.png
+
+          echo "Files after render:"
+          ls -la
+          ls -la docs || true
+          ls -la topology-map.png || true
+
+          if [[ -f topology-map.png ]]; then
+            echo "PNG exists"
+            du -h topology-map.png
+            sha256sum topology-map.png || true
+          else
+            echo "PNG was not created"
+            exit 0
+          fi
         working-directory: "."
 
       - name: Create or verify pull request
