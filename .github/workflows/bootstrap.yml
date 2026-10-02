@@ -103,14 +103,29 @@ jobs:
         with:
           terraform_version: "1.16.2"
           terraform_wrapper: false
+     # FIX START: Authenticates to AWS so the provider schema can be fetched securely
+      - name: Configure AWS Credentials
+        uses: aws-actions/configure-aws-credentials@v4
+        with:
+          role-to-assume: ${{ secrets.AWS_NONPROD_OIDC_ROLE_ARN }}
+          aws-region: eu-central-1
+          
       - name: Download Terraform Plan Artifact
         uses: actions/download-artifact@v4
         with:
           name: terraform-plan
-          path: ./bootstrap  
+          path: ./bootstrap
+          
+      # FIX START: Downloads the AWS provider plugin so 'terraform show' can read it
+      - name: Terraform Init
+        run: terraform init
+        working-directory: "./bootstrap"
+     
+
     # Converts the binary plan file into structural JSON for plotting
       - name: Transform Plan to JSON
         run: terraform show -json tfplan > plan.json
+             mkdir -p docs
         working-directory: "./bootstrap"
         
     # WOW Factor: Parses the infrastructure changes into an architecture topology map image
@@ -118,7 +133,7 @@ jobs:
         uses: erzz/inframap-action@v1
         with:
           plan-json: ./bootstrap/plan.json
-          output: topology-map.png
+          output: ./topology-map.png
         
       - name: Create or verify pull request
         id: pr
