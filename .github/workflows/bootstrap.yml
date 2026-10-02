@@ -36,12 +36,12 @@ jobs:
           git fetch origin main
           base_sha="$(git rev-parse origin/main)"
           if ! git merge-base --is-ancestor "$base_sha" "$source_sha"; then
-            echo "The test branch must include the current main branch before promotion." >&2
+            echo "The feature/RHDS-Terraform branch must include the current main branch before promotion." >&2
             exit 1
           fi
           commit_count="$(git rev-list --count "$base_sha..$source_sha")"
           if [[ "$commit_count" -eq 0 ]]; then
-            echo "No commits to promote; test already matches main."
+            echo "No commits to promote; feature/RHDS-Terraform already matches main."
             echo "has_changes=false" >> "$GITHUB_OUTPUT"
           else
             echo "has_changes=true" >> "$GITHUB_OUTPUT"
@@ -106,17 +106,17 @@ jobs:
           BASE_SHA: ${{ needs.terraform_plan.outputs.base_sha }}
         shell: bash
         run: |
-          pr_url="$(gh pr list --base main --head test --state open --json url --jq '.[0].url')"
+          pr_url="$(gh pr list --base main --head feature/RHDS-Terraform --state open --json url --jq '.[0].url')"
           if [[ -z "$pr_url" ]]; then
-            pr_url="$(gh pr create --base main --head test \
-              --title "Promote test to main" \
+            pr_url="$(gh pr create --base main --head feature/RHDS-Terraform \
+              --title "Promote feature/RHDS-Terraform to main" \
               --body "Terraform plan passed for commit $SOURCE_SHA.")"
           fi
 
           pr_head="$(gh pr view "$pr_url" --json headRefOid --jq '.headRefOid')"
           pr_base="$(gh pr view "$pr_url" --json baseRefOid --jq '.baseRefOid')"
           if [[ "$pr_head" != "$SOURCE_SHA" || "$pr_base" != "$BASE_SHA" ]]; then
-            echo "The PR head or main base changed after planning. Push an updated test branch and rerun." >&2
+            echo "The PR head or main base changed after planning. Push an updated feature/RHDS-Terraform branch and rerun." >&2
             exit 1
           fi
           echo "url=$pr_url" >> "$GITHUB_OUTPUT"
