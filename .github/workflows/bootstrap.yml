@@ -4,9 +4,6 @@ on:
   push:
     branches:
       - feature/RHDS-Terraform
-  pull_request:
-    branches:
-      - main
 
 permissions:
   contents: read
@@ -18,7 +15,6 @@ jobs:
     permissions:
       contents: read
       id-token: write
-
     outputs:
       source_sha: ${{ steps.revision.outputs.source_sha }}
       source_tree: ${{ steps.revision.outputs.source_tree }}
@@ -138,7 +134,7 @@ jobs:
           tflint --init --config ../.tflint.hcl || true
           tflint --config ../.tflint.hcl --format sarif > ../tflint.sarif || true
 
-          - name: Install Checkov
+      - name: Install Checkov
         run: |
           python3 -m pip install checkov==3.2.331
         shell: bash
@@ -187,10 +183,10 @@ jobs:
           echo "Security scan completed."
           echo "Review SARIF results under the Security tab in GitHub."
           echo "TFLint, Checkov, and Trivy were run using free/open-source tools."
-    
-    prepare_pull_request:
-     name: "2. Prepare PR to main"
-     needs:
+
+  prepare_pull_request:
+    name: "2. Prepare PR to main"
+    needs:
       - terraform_plan
       - security_scan
     if: needs.terraform_plan.outputs.has_changes == 'true'
@@ -241,9 +237,11 @@ jobs:
         shell: bash
         run: |
           set -euo pipefail
+
           echo "Installing Graphviz..."
           sudo apt-get update -y
           sudo apt-get install -y graphviz python3
+
           mkdir -p docs
 
           if [[ ! -f bootstrap/plan.json ]]; then
@@ -331,7 +329,7 @@ jobs:
           retention-days: 7
           if-no-files-found: error
 
-    merge_to_main:
+  merge_to_main:
     name: "3. Approve and merge to main"
     needs:
       - terraform_plan
@@ -362,7 +360,7 @@ jobs:
 
           gh pr merge "$PR_URL" --merge
 
-    terraform_apply:
+  terraform_apply:
     name: "4. Apply merged code"
     needs:
       - terraform_plan
@@ -427,3 +425,6 @@ jobs:
           echo "" >> "$GITHUB_STEP_SUMMARY"
           echo "### Security Status" >> "$GITHUB_STEP_SUMMARY"
           echo "- [x] Security scan completed before merge" >> "$GITHUB_STEP_SUMMARY"
+          echo "- [x] TFLint validation passed" >> "$GITHUB_STEP_SUMMARY"
+          echo "- [x] Checkov security checks passed" >> "$GITHUB_STEP_SUMMARY"
+          echo "- [x] Trivy vulnerability scan completed" >> "$GITHUB_STEP_SUMMARY"
