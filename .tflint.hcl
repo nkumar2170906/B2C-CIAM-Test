@@ -4,6 +4,9 @@ plugin "aws" {
   source  = "github.com/terraform-linters/tflint-ruleset-aws"
 }
 
+config {
+  format = "sarif"
+}
 rule "terraform_comment_syntax" {
   enabled = true
 }
