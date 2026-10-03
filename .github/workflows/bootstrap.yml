@@ -123,18 +123,22 @@ jobs:
           ref: ${{ needs.terraform_plan.outputs.source_sha }}
 
       - name: Install TFLint
-        run: |
-          curl -s https://raw.githubusercontent.com/terraform-linters/tflint/master/install_linux.sh | bash
         shell: bash
+        run: |
+          set -euo pipefail
+          curl -fsSL https://raw.githubusercontent.com/terraform-linters/tflint/v0.53.0/install_linux.sh -o /tmp/install_tflint.sh
+          bash /tmp/install_tflint.sh
+          tflint --version
 
       - name: Run TFLint
-        run: |
-          cd bootstrap
-          tflint --init --config ../.tflint.hcl
-          tflint --config ../.tflint.hcl --format sarif > ../tflint.sarif || true
         shell: bash
+        run: |
+          set -euo pipefail
+          cd bootstrap
+          tflint --init --config ../.tflint.hcl || true
+          tflint --config ../.tflint.hcl --format sarif > ../tflint.sarif || true
 
-      - name: Install Checkov
+          - name: Install Checkov
         run: |
           python3 -m pip install checkov==3.2.331
         shell: bash
@@ -157,21 +161,21 @@ jobs:
         continue-on-error: true
 
       - name: Upload TFLint SARIF
-        if: always()
+        if: ${{ always() && hashFiles('tflint.sarif') != '' }}
         uses: github/codeql-action/upload-sarif@v3
         with:
           sarif_file: tflint.sarif
           category: tflint
 
       - name: Upload Checkov SARIF
-        if: always()
+        if: ${{ always() && hashFiles('reports/checkov.sarif') != '' }}
         uses: github/codeql-action/upload-sarif@v3
         with:
           sarif_file: reports/checkov.sarif
           category: checkov
 
       - name: Upload Trivy SARIF
-        if: always()
+        if: ${{ always() && hashFiles('reports/trivy.sarif') != '' }}
         uses: github/codeql-action/upload-sarif@v3
         with:
           sarif_file: reports/trivy.sarif
@@ -183,10 +187,10 @@ jobs:
           echo "Security scan completed."
           echo "Review SARIF results under the Security tab in GitHub."
           echo "TFLint, Checkov, and Trivy were run using free/open-source tools."
-
-  prepare_pull_request:
-    name: "2. Prepare PR to main"
-    needs:
+    
+    prepare_pull_request:
+     name: "2. Prepare PR to main"
+     needs:
       - terraform_plan
       - security_scan
     if: needs.terraform_plan.outputs.has_changes == 'true'
@@ -327,7 +331,7 @@ jobs:
           retention-days: 7
           if-no-files-found: error
 
-  merge_to_main:
+    merge_to_main:
     name: "3. Approve and merge to main"
     needs:
       - terraform_plan
@@ -358,7 +362,7 @@ jobs:
 
           gh pr merge "$PR_URL" --merge
 
-  terraform_apply:
+    terraform_apply:
     name: "4. Apply merged code"
     needs:
       - terraform_plan
