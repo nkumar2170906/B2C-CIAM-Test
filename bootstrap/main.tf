@@ -17,7 +17,7 @@ provider "aws" {
 # =========================================================================
 # 1. SECURE S3 BUCKET FOR REMOTE TERRAFORM STATE STORAGE
 # =========================================================================
-
+/*
 # Create a simple S3 bucket
 resource "aws_s3_bucket" "my_bucket" {
   bucket = "my-unique-bucket-test77kumarniraj24" # S3 bucket names must be globally unique
@@ -26,11 +26,10 @@ resource "aws_s3_bucket" "my_bucket" {
     Name        = "My Simple S3 Bucket"
     Environment = "Dev"
   }
-}
+}*/
 
-/*
+
 resource "aws_s3_bucket" "tf_state" {
-h
   bucket        = var.s3_bucket_name
   force_destroy = false # Protects structural environment histories from accidental destruction
 
@@ -82,4 +81,3 @@ resource "aws_dynamodb_table" "tf_locks" {
 
   tags = merge(var.global_tags, { Name = var.dynamodb_table_name })
 }
-*/
