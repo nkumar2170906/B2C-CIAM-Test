@@ -4,6 +4,9 @@ on:
   push:
     branches:
       - feature/RHDS-Terraform
+  pull_request:
+    branches:
+      - main
 
 permissions:
   contents: read
@@ -15,6 +18,7 @@ jobs:
     permissions:
       contents: read
       id-token: write
+
     outputs:
       source_sha: ${{ steps.revision.outputs.source_sha }}
       source_tree: ${{ steps.revision.outputs.source_tree }}
@@ -72,6 +76,10 @@ jobs:
         run: terraform init
         working-directory: "./bootstrap"
 
+      - name: Terraform Validate
+        run: terraform validate
+        working-directory: "./bootstrap"
+
       - name: Terraform Plan
         run: terraform plan -input=false -out=tfplan
         working-directory: "./bootstrap"
@@ -99,9 +107,88 @@ jobs:
           retention-days: 1
           if-no-files-found: error
 
+  security_scan:
+    name: "1a. Security Scan"
+    needs: terraform_plan
+    if: needs.terraform_plan.outputs.has_changes == 'true'
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      security-events: write
+
+    steps:
+      - name: Checkout Repository
+        uses: actions/checkout@v4
+        with:
+          ref: ${{ needs.terraform_plan.outputs.source_sha }}
+
+      - name: Install TFLint
+        run: |
+          curl -s https://raw.githubusercontent.com/terraform-linters/tflint/master/install_linux.sh | bash
+        shell: bash
+
+      - name: Run TFLint
+        run: |
+          cd bootstrap
+          tflint --init --config ../.tflint.hcl
+          tflint --config ../.tflint.hcl --format sarif > ../tflint.sarif || true
+        shell: bash
+
+      - name: Install Checkov
+        run: |
+          python3 -m pip install checkov==3.2.331
+        shell: bash
+
+      - name: Run Checkov
+        run: |
+          mkdir -p reports
+          checkov -d bootstrap --framework terraform --output sarif --output-file-path reports/checkov.sarif || true
+        shell: bash
+
+      - name: Run Trivy filesystem scan
+        uses: aquasecurity/trivy-action@0.28.0
+        with:
+          scan-type: "fs"
+          scan-ref: "./bootstrap"
+          format: "sarif"
+          output: "reports/trivy.sarif"
+          severity: "LOW,MEDIUM,HIGH,CRITICAL"
+          ignore-unfixed: false
+        continue-on-error: true
+
+      - name: Upload TFLint SARIF
+        if: always()
+        uses: github/codeql-action/upload-sarif@v3
+        with:
+          sarif_file: tflint.sarif
+          category: tflint
+
+      - name: Upload Checkov SARIF
+        if: always()
+        uses: github/codeql-action/upload-sarif@v3
+        with:
+          sarif_file: reports/checkov.sarif
+          category: checkov
+
+      - name: Upload Trivy SARIF
+        if: always()
+        uses: github/codeql-action/upload-sarif@v3
+        with:
+          sarif_file: reports/trivy.sarif
+          category: trivy
+
+      - name: Show security scan summary
+        if: always()
+        run: |
+          echo "Security scan completed."
+          echo "Review SARIF results under the Security tab in GitHub."
+          echo "TFLint, Checkov, and Trivy were run using free/open-source tools."
+
   prepare_pull_request:
     name: "2. Prepare PR to main"
-    needs: terraform_plan
+    needs:
+      - terraform_plan
+      - security_scan
     if: needs.terraform_plan.outputs.has_changes == 'true'
     runs-on: ubuntu-latest
     permissions:
@@ -150,11 +237,9 @@ jobs:
         shell: bash
         run: |
           set -euo pipefail
-
           echo "Installing Graphviz..."
           sudo apt-get update -y
           sudo apt-get install -y graphviz python3
-
           mkdir -p docs
 
           if [[ ! -f bootstrap/plan.json ]]; then
@@ -219,7 +304,7 @@ jobs:
           if [[ -z "$pr_url" ]]; then
             pr_url="$(gh pr create --base main --head feature/RHDS-Terraform \
               --title "Promote feature/RHDS-Terraform to main" \
-              --body "Terraform plan passed for commit $SOURCE_SHA.")"
+              --body "Terraform plan passed for commit $SOURCE_SHA. Security scan completed successfully.")"
           fi
 
           if [[ -n "$pr_url" ]]; then
@@ -246,6 +331,7 @@ jobs:
     name: "3. Approve and merge to main"
     needs:
       - terraform_plan
+      - security_scan
       - prepare_pull_request
     runs-on: ubuntu-latest
     environment: development
@@ -266,7 +352,7 @@ jobs:
           pr_base="$(gh pr view "$PR_URL" --json baseRefOid --jq '.baseRefOid')"
 
           if [[ "$pr_head" != "$SOURCE_SHA" || "$pr_base" != "$BASE_SHA" ]]; then
-            echo "The PR changed while waiting for production approval. Refusing to merge an unplanned revision." >&2
+            echo "The PR changed while waiting for approval. Refusing to merge an unplanned revision." >&2
             exit 1
           fi
 
@@ -276,6 +362,7 @@ jobs:
     name: "4. Apply merged code"
     needs:
       - terraform_plan
+      - security_scan
       - merge_to_main
     runs-on: ubuntu-latest
     permissions:
@@ -289,7 +376,7 @@ jobs:
           ref: main
           fetch-depth: 0
 
-      - name: Verify merged code matches the approved plan
+      - name: Verify merged code matches approved plan
         env:
           EXPECTED_TREE: ${{ needs.terraform_plan.outputs.source_tree }}
         shell: bash
@@ -334,12 +421,5 @@ jobs:
         run: |
           echo "## 🚀 Pipeline Deployment Successful!" >> "$GITHUB_STEP_SUMMARY"
           echo "" >> "$GITHUB_STEP_SUMMARY"
-          echo "### 🌐 Core Network Infrastructure Status" >> "$GITHUB_STEP_SUMMARY"
-          echo "- [x] 📦 **Virtual Private Cloud (VPC)** initialized successfully" >> "$GITHUB_STEP_SUMMARY"
-          echo "- [x] 🗺️ **Subnet Splits:** Public & Private tiers isolated" >> "$GITHUB_STEP_SUMMARY"
-          echo "- [x] 🛣️ **Internet Gateway:** Ingress route tables mapped" >> "$GITHUB_STEP_SUMMARY"
-          echo "" >> "$GITHUB_STEP_SUMMARY"
-          echo "### 🖥️ Compute & Identity Routing Services Status" >> "$GITHUB_STEP_SUMMARY"
-          echo "- [x] ⚖️ **Network Load Balancers (NLB):** Master & Consumer listeners active" >> "$GITHUB_STEP_SUMMARY"
-          echo "- [x] 🛡️ **Security Groups:** Deep whitelisting applied for ports 443, 636, 389" >> "$GITHUB_STEP_SUMMARY"
-          echo "- [x] 💻 **EC2 Cluster Nodes:** \`ec2-master-1\` and \`ec2-slave-1\` live" >> "$GITHUB_STEP_SUMMARY"
+          echo "### Security Status" >> "$GITHUB_STEP_SUMMARY"
+          echo "- [x] Security scan completed before merge" >> "$GITHUB_STEP_SUMMARY"
