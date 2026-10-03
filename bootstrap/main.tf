@@ -30,7 +30,6 @@ resource "aws_s3_bucket" "my_bucket" {
 
 
 resource "aws_s3_bucket" "tf_state" {
-h
   bucket        = var.s3_bucket_name
   force_destroy = false # Protects structural environment histories from accidental destruction
 
