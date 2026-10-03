@@ -4,6 +4,9 @@ on:
   push:
     branches:
       - feature/RHDS-Terraform
+  pull_request:
+    branches:
+      - main
 
 permissions:
   contents: read
@@ -15,6 +18,7 @@ jobs:
     permissions:
       contents: read
       id-token: write
+
     outputs:
       source_sha: ${{ steps.revision.outputs.source_sha }}
       source_tree: ${{ steps.revision.outputs.source_tree }}
@@ -237,11 +241,9 @@ jobs:
         shell: bash
         run: |
           set -euo pipefail
-
           echo "Installing Graphviz..."
           sudo apt-get update -y
           sudo apt-get install -y graphviz python3
-
           mkdir -p docs
 
           if [[ ! -f bootstrap/plan.json ]]; then
@@ -425,6 +427,9 @@ jobs:
           echo "" >> "$GITHUB_STEP_SUMMARY"
           echo "### Security Status" >> "$GITHUB_STEP_SUMMARY"
           echo "- [x] Security scan completed before merge" >> "$GITHUB_STEP_SUMMARY"
-          echo "- [x] TFLint validation passed" >> "$GITHUB_STEP_SUMMARY"
-          echo "- [x] Checkov security checks passed" >> "$GITHUB_STEP_SUMMARY"
-          echo "- [x] Trivy vulnerability scan completed" >> "$GITHUB_STEP_SUMMARY"
+          echo "- [x] Terraform plan validated and approved" >> "$GITHUB_STEP_SUMMARY"
+          echo "- [x] Deployment applied to main successfully" >> "$GITHUB_STEP_SUMMARY"
+          echo "" >> "$GITHUB_STEP_SUMMARY"
+          echo "### Artifact Summary" >> "$GITHUB_STEP_SUMMARY"
+          echo "- Terraform plan artifact uploaded to workflow run" >> "$GITHUB_STEP_SUMMARY"
+          echo "- Architecture topology diagram generated" >> "$GITHUB_STEP_SUMMARY"
