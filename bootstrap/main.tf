@@ -26,7 +26,7 @@ provider "aws" {
 # 1. SECURE S3 BUCKET FOR REMOTE TERRAFORM STATE STORAGE
 # =========================================================================
 
-# Create a simple S3 bucket
+# Create a new S3 bucket
 resource "aws_s3_bucket" "my_bucket" {
   #bucket = "my-unique-bucket-test2490" # S3 bucket names must be globally unique
    bucket = "my-unique-bucket-test25200"
