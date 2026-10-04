@@ -365,6 +365,11 @@ jobs:
 
           gh pr merge "$PR_URL" --merge
       
+      - name: Checkout repository
+        uses: actions/checkout@v4
+        with:
+         fetch-depth: 0
+          
       - name: Update feature branch to match main
         env:
           GH_TOKEN: ${{ github.token }}
