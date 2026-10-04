@@ -1,6 +1,13 @@
 
 terraform {
   required_version = ">= 1.5.0"
+  backend "s3" {
+    bucket         = "b2c-ciam-tfstate-nonprod"
+    key            = "non-prod/compute/s3_terraform.tfstate"
+    region         = "eu-central-1"
+    dynamodb_table = "b2c-ciam-tflocks-nonprod"
+    encrypt        = true
+  }
   required_providers {
     aws = {
       source  = "hashicorp/aws"
@@ -20,7 +27,7 @@ provider "aws" {
 
 # Create a simple S3 bucket
 resource "aws_s3_bucket" "my_bucket" {
-  bucket = "my-unique-bucket-test77kumarniraj2490" # S3 bucket names must be globally unique
+  bucket = "my-unique-bucket-test2490" # S3 bucket names must be globally unique
 
   tags = {
     Name        = "My Simple S3 Bucket"
