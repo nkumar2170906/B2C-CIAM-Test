@@ -11,7 +11,7 @@ terraform {
 }
 
 provider "aws" {
-  region = var.aws.region
+  region = var.aws_region
 }
 
 # Calls the child module via your clean folder architecture path
@@ -49,7 +49,7 @@ module "dns_routing" {
   global_tags          = var.tags
   
   # Connects directly to the live outputs of your network infrastructure
-  local_vpc_id         = module.rhds_network.vpc_id
+  local_vpc_id         = module.b2c_ciam_test_network.vpc_id
   
   # Parameter Mappings (Fed cleanly down from your centralized tfvars file)
   public_domain_name   = var.public_domain_name
