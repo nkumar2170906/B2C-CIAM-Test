@@ -4,7 +4,8 @@ terraform {
     bucket         = "b2c-ciam-tfstate-nonprod"
     key            = "non-prod/compute/terraform.tfstate"
     region         = "eu-central-1"
-    dynamodb_table = "b2c-ciam-tflocks-nonprod"
+    #dynamodb_table = "b2c-ciam-tflocks-nonprod"
+    use_lockfile   = true
     encrypt        = true
   }
 }
