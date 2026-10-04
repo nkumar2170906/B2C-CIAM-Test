@@ -45,7 +45,7 @@ variable "b2c_ciam_test_public_subnet_cidrs" {
     //default = []
 }
 
-variable "external_vpc_cidr" {
+variable "external_ciam_vpc_cidr" {
     type = string
   
 }
