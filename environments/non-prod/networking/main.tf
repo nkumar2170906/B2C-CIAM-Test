@@ -55,5 +55,5 @@ module "dns_routing" {
   # Parameter Mappings (Fed cleanly down from your centralized tfvars file)
   public_domain_name   = var.rhds_public_domain_name
   private_domain_name  = var.rhds_private_domain_name
-  external_vpc_id      = var.external_vpc_id # The target CIAM VPC ID passed from your variables
+  external_vpc_id      = var.external_vpc_id # The target CIAM VPC ID passed from your variable.
 }
