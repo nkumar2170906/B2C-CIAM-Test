@@ -1,6 +1,7 @@
 aws_region             = "eu-central-1"
 environment            = "non-prod"
 aws_availability_zones = ["eu-central-1a", "eu-central-1b"]
+vpc_name                = "b2c_ciam_test"
 
 # Explicit Non-Prod IP Allocations matching your architecture model
 b2c_ciam_test_cidr                 = ["10.200.0.0/16"]

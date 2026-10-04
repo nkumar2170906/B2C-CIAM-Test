@@ -16,10 +16,10 @@ provider "aws" {
 
 # Calls the child module via your clean folder architecture path
 module "b2c_ciam_test_network" {
-  source               = "../../modules/vpc"
+  source               = "../../../modules/vpc"
   environment          = var.environment 
-  vpc_name             = "b2c_ciam_test"
-  vpc_cidr             = var.b2c_ciam_test
+  vpc_name             = var.vpc_name
+  vpc_cidr             = var.b2c_ciam_test_cidr
   public_subnet_cidrs  = var.b2c_ciam_test_public_subnet_cidrs  # For SCIM ALB (Public)
   private_subnet_cidrs = var.b2c_ciam_test_private_subnet_cidrs # For NLBs and EC2 Compute Tiers
   availability_zones   = var.aws_availability_zones
@@ -44,7 +44,7 @@ module "cross_account_router" {
 
 # 3.Centralized Identity Namespace Management Block
 module "dns_routing" {
-  source               = "../../modules/route53"
+  source               = "/../modules/route53"
   environment          = var.environment
   global_tags          = var.tags
   

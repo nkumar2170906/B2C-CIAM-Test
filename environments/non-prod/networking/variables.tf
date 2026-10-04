@@ -46,7 +46,7 @@ variable "b2c_ciam_test_public_subnet_cidrs" {
 }
 
 variable "b2c_ciam_test_cidr" {
-    type = list(string)
+    type = string
     description = "A list of IP subnet blocks designated for secure private boundaries"
     default = []
 }
