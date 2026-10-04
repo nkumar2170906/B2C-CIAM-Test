@@ -18,8 +18,8 @@ external_aws_account_id = "039714564399"  # The 12-digit AWS Account identifier 
 # =========================================================================
 # DOMAIN IDENTITY & CROSS-ACCOUNT DNS HANDSHAKE METADATA 
 # =========================================================================
-public_domain_name  = "test.com"          # The pre-owned public root domain
-private_domain_name = "internal.test.com" # The enterprise private zone domain standard
+rhds_public_domain_name  = "test.com"          # The pre-owned public root domain
+rhds_private_domain_name = "internal.test.com" # The enterprise private zone domain standard
 external_vpc_id     = "vpc-038b4d7cf77b5248b"      # The independent CIAM team's actual VPC ID
 
 

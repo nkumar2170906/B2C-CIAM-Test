@@ -53,7 +53,7 @@ module "dns_routing" {
   local_vpc_id         = module.b2c_ciam_test_network.vpc_id
   
   # Parameter Mappings (Fed cleanly down from your centralized tfvars file)
-  public_domain_name   = var.public_domain_name
-  private_domain_name  = var.private_domain_name
+  public_domain_name   = var.rhds_public_domain_name
+  private_domain_name  = var.rhds_private_domain_name
   external_vpc_id      = var.external_vpc_id # The target CIAM VPC ID passed from your variables
 }

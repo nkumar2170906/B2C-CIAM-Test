@@ -23,12 +23,12 @@ variable "vpc_name" {
   
 }
 
-variable "public_domain_name" {
+variable "rhds_public_domain_name" {
     type = string
     description = "Public domain name"
 }
 
-variable "private_domain_name" {
+variable "rhds_private_domain_name" {
     type = string
     description = "Private domain name"
   
