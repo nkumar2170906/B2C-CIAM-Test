@@ -46,3 +46,4 @@ resource "aws_eip_association" "this" {
   instance_id   = aws_instance.this[each.key].id
   allocation_id = aws_eip.this[each.key].id
 }
+
