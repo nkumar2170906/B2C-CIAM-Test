@@ -13,12 +13,12 @@ variable "local_private_route_table_id" {
   description = "The private route table container ID where the cross-VPC route rule will be inserted"
 }
 
-variable "external_ciam_vpc_cidr" {
+variable "external_vpc_cidr" {
   type        = string
   description = "The absolute IP CIDR block allocation of the independent CIAM VPC (e.g., 10.100.0.0/16)"
 }
 
-variable "external_ciam_aws_account_id" {
+variable "external_aws_account_id" {
   type        = string
   description = "The 12-digit structural AWS Account ID hosting the external CIAM environment"
 }
