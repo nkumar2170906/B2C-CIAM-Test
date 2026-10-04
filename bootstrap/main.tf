@@ -5,7 +5,8 @@ terraform {
     bucket         = "b2c-ciam-tfstate-nonprod"
     key            = "non-prod/compute/s3_terraform.tfstate"
     region         = "eu-central-1"
-    dynamodb_table = "b2c-ciam-tflocks-nonprod"
+    #dynamodb_table = "b2c-ciam-tflocks-nonprod"
+    use_lockfile   = true
     encrypt        = true
   }
   required_providers {
@@ -28,7 +29,7 @@ provider "aws" {
 # Create a simple S3 bucket
 resource "aws_s3_bucket" "my_bucket" {
   #bucket = "my-unique-bucket-test2490" # S3 bucket names must be globally unique
-   bucket = "my-unique-bucket-test25100"
+   bucket = "my-unique-bucket-test25200"
 
   tags = {
     Name        = "My Simple S3 Bucket"
