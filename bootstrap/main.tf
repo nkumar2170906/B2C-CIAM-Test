@@ -5,7 +5,7 @@ terraform {
     bucket         = "b2c-ciam-tfstate-nonprod"
     key            = "non-prod/compute/s3_terraform.tfstate"
     region         = "eu-central-1"
-    dynamodb_table = "client-b2c-ciam-tflocks-nonprod"
+    dynamodb_table = "b2c-ciam-tflocks-nonprod"
     encrypt        = true
   }
   required_providers {
