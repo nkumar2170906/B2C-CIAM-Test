@@ -1,7 +1,8 @@
+/*
 variable "exteral_vpc_cidr" {
     type = string
     description = "The primary IP range allocation block for the VPC"
- }
+ }*/
 
 /*
 variable "b2c_ciam_test" {
