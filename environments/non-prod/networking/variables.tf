@@ -1,8 +1,8 @@
 variable "exteral_vpc_cidr" {
     type = string
     description = "The primary IP range allocation block for the VPC"
-  
-}
+ }
+
 /*
 variable "b2c_ciam_test" {
     type = string
@@ -61,12 +61,12 @@ variable "b2c_ciam_test_private_subnet_cidrs" {
     description = "A list of IP subnet blocks designated for secure private boundaries"
     //default = []
 }
-
+/*
 variable "public_subnet_cidrs" {
     type = list(string)
     description = "A list of IP subnet blocks designated for public boundaries" 
     //default = []
-}
+}*/
 
 variable "aws_availability_zones" {
     type = list(string)
