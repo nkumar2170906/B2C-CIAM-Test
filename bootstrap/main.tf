@@ -27,7 +27,8 @@ provider "aws" {
 
 # Create a simple S3 bucket
 resource "aws_s3_bucket" "my_bucket" {
-  bucket = "my-unique-bucket-test2490" # S3 bucket names must be globally unique
+  #bucket = "my-unique-bucket-test2490" # S3 bucket names must be globally unique
+   bucket = "my-unique-bucket-test2590"
 
   tags = {
     Name        = "My Simple S3 Bucket"
