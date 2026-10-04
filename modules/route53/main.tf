@@ -2,9 +2,18 @@
 # 1. PUBLIC ROUTE 53 ZONE DISCOVERY
 # =========================================================================
 # Looks up the pre-registered corporate top-level domain owned by the client
+/*
 data "aws_route53_zone" "public" {
   name         = var.public_domain_name
   private_zone = false
+}*/
+
+resource "aws_route53_zone" "public" {
+  name = var.public_domain_name
+
+  tags = merge(var.global_tags, {
+    Name = "${var.environment}-public-hosted-zone"
+  })
 }
 
 # =========================================================================

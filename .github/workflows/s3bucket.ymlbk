@@ -72,8 +72,8 @@ jobs:
           role-to-assume: ${{ secrets.AWS_NONPROD_OIDC_ROLE_ARN }}
           aws-region: eu-central-1
 
-      - name: Show AWS Caller Identity
-        run: aws sts get-caller-identity
+      #- name: Show AWS Caller Identity
+      #  run: aws sts get-caller-identity
 
       - name: Terraform Init
         run: terraform init

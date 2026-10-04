@@ -370,6 +370,24 @@ jobs:
 
           gh pr merge "$PR_URL" --merge
 
+      - name: Checkout repository
+        uses: actions/checkout@v4
+        with:
+         fetch-depth: 0
+          
+      - name: Update feature branch to match main
+        env:
+          GH_TOKEN: ${{ github.token }}
+        shell: bash
+        run: |
+          git config user.name "GitHub Actions"
+          git config user.email "actions@github.com"
+          git fetch origin
+          git checkout feature/RHDS-Terraform
+          git rebase origin/main
+          git push origin feature/RHDS-Terraform --force-with-lease
+
+
   terraform_apply:
     name: "4. Apply merged code"
     needs:
