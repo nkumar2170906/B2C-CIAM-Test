@@ -16,7 +16,7 @@ provider "aws" {
 
 # Calls the child module via your clean folder architecture path
 module "b2c_ciam_test_network" {
-  source               = "./modules/vpc"
+  source               = "../../../modules/vpc"
   environment          = var.environment 
   vpc_name             = "b2c_ciam_test"
   vpc_cidr             = var.b2c_ciam_test
