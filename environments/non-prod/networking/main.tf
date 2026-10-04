@@ -16,7 +16,7 @@ provider "aws" {
 
 # Calls the child module via your clean folder architecture path
 module "b2c_ciam_test_network" {
-  source               = "../../modules/vpc"
+  source               = "/../../../modules/vpc"
   environment          = var.environment 
   vpc_name             = "b2c_ciam_test"
   vpc_cidr             = var.b2c_ciam_test
@@ -28,7 +28,7 @@ module "b2c_ciam_test_network" {
 
 # Asynchronous Multi-Account Router Attachment Block
 module "cross_account_router" {
-  source                       = "../../modules/transit_gateway"
+  source                       = "/../../../modules/transit_gateway"
   environment                  = var.environment
   global_tags                  = var.tags
   
@@ -44,7 +44,7 @@ module "cross_account_router" {
 
 # 3.Centralized Identity Namespace Management Block
 module "dns_routing" {
-  source               = "../../modules/route53"
+  source               = "/../../../modules/route53"
   environment          = var.environment
   global_tags          = var.tags
   
