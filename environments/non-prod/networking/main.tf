@@ -38,6 +38,7 @@ module "cross_account_router" {
   local_private_route_table_id = module.b2c_ciam_test_network.private_route_table_id
   
   # Cross-Account Parameter Mappings (Fed securely from your tfvars)
+  
   external_vpc_cidr       = var.external_vpc_cidr
   external_aws_account_id = var.external_aws_account_id
 }
