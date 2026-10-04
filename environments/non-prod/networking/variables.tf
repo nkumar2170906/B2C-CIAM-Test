@@ -3,12 +3,12 @@ variable "exteral_vpc_cidr" {
     description = "The primary IP range allocation block for the VPC"
   
 }
-
+/*
 variable "b2c_ciam_test" {
     type = string
     description = "b2c_ciam_test"
   
-}
+}*/
 
 variable "external_vpc_id" {
     type = string
