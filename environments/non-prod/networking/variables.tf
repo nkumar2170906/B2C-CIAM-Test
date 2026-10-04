@@ -42,7 +42,7 @@ variable "aws_region" {
 variable "b2c_ciam_test_public_subnet_cidrs" {
     type = list(string)
     description = "A list of IP subnet blocks designated for secure private boundaries"
-    default = []
+    //default = []
 }
 
 variable "external_vpc_cidr" {
@@ -53,19 +53,19 @@ variable "external_vpc_cidr" {
 variable "b2c_ciam_test_cidr" {
     type = string
     description = "A list of IP subnet blocks designated for secure private boundaries"
-    default = []
+    //default = []
 }
 
 variable "b2c_ciam_test_private_subnet_cidrs" {
     type = list(string)
     description = "A list of IP subnet blocks designated for secure private boundaries"
-    default = []
+    //default = []
 }
 
 variable "public_subnet_cidrs" {
     type = list(string)
     description = "A list of IP subnet blocks designated for public boundaries" 
-    default = []
+    //default = []
 }
 
 variable "aws_availability_zones" {
