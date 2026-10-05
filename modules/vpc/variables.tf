@@ -37,7 +37,35 @@ variable "global_tags" {
   description = "Standard corporate resource labeling metadata mapping"
   default     = {}
 }
+#================================
+##NACLE variables
 
+variable "public_nacl_ingress_rules" {
+  type = list(object({
+    protocol   = string
+    rule_no    = number
+    action     = string
+    cidr_block = string
+    from_port  = number
+    to_port    = number
+  }))
+  description = "Matrix list of allowed inbound network ACL parameters"
+  default     = []
+}
+
+variable "public_nacl_egress_rules" {
+  type = list(object({
+    protocol   = string
+    rule_no    = number
+    action     = string
+    cidr_block = string
+    from_port  = number
+    to_port    = number
+  }))
+  description = "Matrix list of allowed outbound network ACL parameters"
+  default     = []
+}
+####################################################
 
 
 
