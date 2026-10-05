@@ -89,3 +89,28 @@ variable "tags" {
   description = "Standard corporate resource labeling metadata mapping"
   default     = {}
 }
+########NACLE variable########################
+variable "root_public_nacl_ingress" {
+  type = list(object({
+    protocol   = string
+    rule_no    = number
+    action     = string
+    cidr_block = string
+    from_port  = number
+    to_port    = number
+  }))
+  description = "Root orchestrator configuration mapping for inbound public subnets NACLs"
+}
+
+variable "root_public_nacl_egress" {
+  type = list(object({
+    protocol   = string
+    rule_no    = number
+    action     = string
+    cidr_block = string
+    from_port  = number
+    to_port    = number
+  }))
+  description = "Root orchestrator configuration mapping for outbound public subnets NACLs"
+}
+#####################################

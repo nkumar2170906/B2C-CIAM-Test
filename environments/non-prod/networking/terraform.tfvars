@@ -23,6 +23,48 @@ rhds_private_domain_name = "internal.nkumartest.com" # The enterprise private zo
 external_vpc_id     = "vpc-038b4d7cf77b5248b"      # The independent CIAM team's actual VPC ID
 
 
+# =========================================================================
+# DYNAMIC PERIMETER SECURITY RULES FOR PUBLIC ALB TIERS (WOW FACTOR)
+# =========================================================================
+root_public_nacl_ingress = [
+  {
+    protocol   = "tcp"
+    rule_no    = 100
+    action     = "allow"
+    cidr_block = "0.0.0.0/0" # Allow internet users to access HTTPS web layer
+    from_port  = 443
+    to_port    = 443
+  },
+  {
+    protocol   = "tcp"
+    rule_no    = 110
+    action     = "allow"
+    cidr_block = "0.0.0.0/0" # Allow internet users to access HTTP for redirects
+    from_port  = 80
+    to_port    = 80
+  },
+
+  {
+    protocol   = "tcp"
+    rule_no    = 120
+    action     = "allow"
+    cidr_block = "0.0.0.0/0" # Open Ephemeral return bounds
+    from_port  = 1024
+    to_port    = 65535
+  }
+]
+
+root_public_nacl_egress = [
+  {
+    protocol   = "-1" # Stateless return path: allow all outbound response traffic
+    rule_no    = 100
+    action     = "allow"
+    cidr_block = "0.0.0.0/0"
+    from_port  = 0
+    to_port    = 0
+  }
+]
+
 tags = {
   Project     = "B2C-CIAM-Identity-Platform"
   ManagedBy   = "Terraform-GitOps"

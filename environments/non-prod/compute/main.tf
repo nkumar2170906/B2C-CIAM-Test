@@ -14,7 +14,7 @@ provider "aws" {
   region = var.aws_region
 }
 
-# 1. Fetch live network parameters from Layer 1 state caching
+# Fetch live network parameters from Layer 1 state caching
 data "terraform_remote_state" "networking" {
   backend = "s3"
   config = {
@@ -24,9 +24,40 @@ data "terraform_remote_state" "networking" {
   }
 }
 
-# 2. Inbound Security Perimeter Block
+# =========================================================================
+# 1. DEDICATED PERIMETER SECURITY GROUP FOR PUBLIC SCIM ALB
+# =========================================================================
+module "scim_alb_firewall" {
+  source      = "../../../modules/security_group"
+  environment = var.environment
+  sg_name     = "scim-alb-public"
+  vpc_id      = data.terraform_remote_state.networking.outputs.vpc_id
+  global_tags = var.tags
+
+  # Strictly limited to web integration traffic patterns only!
+  ingress_rules = [
+    {
+      description = "Allow public HTTPS inbound sync requests"
+      from_port   = 443
+      to_port     = 443
+      protocol    = "tcp"
+      cidr_blocks = ["0.0.0.0/0"]
+    },
+    {
+        description = "Allow public HTTP inbound requests for secure redirection"
+      from_port   = 80
+      to_port     = 80
+      protocol    = "tcp"
+      cidr_blocks = ["0.0.0.0/0"]
+    }
+  ]
+}
+##############################################
+
+# 2. CORE COMPUTE TIERS SECURITY GROUP (RHDS INSTANCES & INTERNAL NLBs)
+
 module "compute_firewall" {
-  source        = "../../modules/security_group"
+  source        = "../../../modules/security_group"
   environment   = var.environment
   sg_name       = "directory-services"
   vpc_id        = data.terraform_remote_state.networking.outputs.vpc_id
@@ -36,7 +67,7 @@ module "compute_firewall" {
 
 # 3.Dynamic High-Availability Directory Services Compute Tier
 module "rhds_cluster" {
-  source             = "../../modules/ec2"
+  source             = "../../../modules/ec2"
   environment        = var.environment
   global_tags        = var.tags
   
@@ -53,7 +84,7 @@ module "rhds_cluster" {
 
 # 4. Standalone Internet-Facing Identity Integration Gateway Layer
 module "public_scim_gateway" {
-  source             = "../../modules/scim_alb"
+  source             = "../../../modules/scim_alb"
   environment        = var.environment
   global_tags        = var.tags
 
@@ -62,7 +93,7 @@ module "public_scim_gateway" {
   public_subnet_ids  = data.terraform_remote_state.networking.outputs.public_subnet_ids
 
   # Wire up the security perimeter and target node bindings cleanly
-  security_group_ids = [module.compute_firewall.security_group_id]
+  security_group_ids = [module.scim_alb_firewall.security_group_id]
   
   # Extracts the exact Master instance token dynamically out of your cluster map
   master_instance_id = module.rhds_cluster.instance_ids["ec2-master-1"]
@@ -74,7 +105,7 @@ module "public_scim_gateway" {
 
 # 5.Standalone Private Master Network Load Balancer (Secure Writes)
 module "private_master_lb" {
-  source                    = "../../modules/master_nlb"
+  source                    = "../../../modules/master_nlb"
   environment               = var.environment
   global_tags               = var.tags
 
@@ -91,7 +122,7 @@ module "private_master_lb" {
 
 # Standalone Private Consumer Network Load Balancer (Secure Reads/Queries)
 module "private_consumer_lb" {
-  source                    = "../../modules/consumer_nlb"
+  source                    = "../../../modules/consumer_nlb"
   environment               = var.environment
   global_tags               = var.tags
 

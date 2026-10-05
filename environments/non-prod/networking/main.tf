@@ -24,6 +24,11 @@ module "b2c_ciam_test_network" {
   private_subnet_cidrs = var.b2c_ciam_test_private_subnet_cidrs # For NLBs and EC2 Compute Tiers
   availability_zones   = var.aws_availability_zones
   global_tags          = var.tags
+
+  # INTERCEPT AND PASS DOWN THE DYNAMIC NACL PERIMETER ENTRIES:
+  public_nacl_ingress_rules = var.root_public_nacl_ingress
+  public_nacl_egress_rules  = var.root_public_nacl_egress
+
 }
 
 # Asynchronous Multi-Account Router Attachment Block
