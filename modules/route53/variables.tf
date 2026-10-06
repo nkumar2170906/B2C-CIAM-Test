@@ -18,6 +18,12 @@ variable "external_vpc_id" {
   description = "The structural VPC ID string belonging to the independent CIAM team's account"
 }
 
+variable "external_vpc_region" {
+  type = string
+  description = "Resource block tells AWS exactly which geographic data center region your incoming VPC lives in"
+  
+}
+
 variable "environment" {
   type        = string
   description = "Namespace operational context flag (e.g., non-prod or prod)"

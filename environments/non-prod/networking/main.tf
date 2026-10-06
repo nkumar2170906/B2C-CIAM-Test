@@ -14,7 +14,9 @@ provider "aws" {
   region = var.aws_region
 }
 
-# Calls the child module via your clean folder architecture path
+# =========================================================================
+# 1. PRIMARY NETWORK TIERS BLOCK  - VPC
+# =========================================================================
 module "b2c_ciam_test_network" {
   source               = "../../../modules/vpc"
   environment          = var.root_environment 
@@ -31,9 +33,9 @@ module "b2c_ciam_test_network" {
 
 }
 
-# =========================================================================
-# 2. CROSS-ACCOUNT ROUTER LINKING TO EXISTING CENTRALIZED TGW
-# =========================================================================
+# ===========================================================================================
+# 2. TRANSIT GATEWAY ATTACHMENT - CROSS-ACCOUNT ROUTER LINKING TO EXISTING CENTRALIZED TGW
+# ==========================================================================================
 
 module "cross_account_router" {
   source = "../../../modules/transit_gateway"
@@ -44,60 +46,22 @@ module "cross_account_router" {
   local_private_route_table_ids = [module.b2c_ciam_test_network.private_route_table_id]
   tg_id = var.root_existing_tgw_id
   tgw_destination_cidr_block = var.root_tgw_destination_cidr_block
+  
 
 }
 
-# Asynchronous Multi-Account Router Attachment Block
 
-/*
-module "cross_account_router" {
-  source                       = "../../../modules/transit_gateway"
-  environment                  = var.root_environment
-  global_tags                  = var.tags
+# =========================================================
+#   3. ROUTE-53 BLOCK
+# ===========================================================
 
-  # Clean internal dependencies feeding straight from the network module outputs
-
-  local_vpc_id                 = module.b2c_ciam_test_network.vpc_id
-  local_private_subnet_ids     = module.b2c_ciam_test_network.private_subnet_ids
-  local_private_route_table_id = module.b2c_ciam_test_network.private_route_table_id
-  tg_id                         = var.root_existing_tgw_id
-  tgw_destination_cidr_block    = var.root_tgw_destination_cidr_block
-
-}*/
-
-/*
-  # Cross-Account Parameter Mappings (Fed securely from your tfvars)
-  external_vpc_cidr       = var.external_ciam_vpc_cidr
-  external_aws_account_id = var.external_aws_account_id
-  tg_id                   = var.root_existing_tgw_id
-*/
-/*
-module "cross_account_router" {
-    source  =   "../../modules/transit_gateway"
-    environment = var.root_environment
-    global_tags = var.tags
-    local_vpc_id = module.b2c_ciam_test_network.vpc_id
-    local_private_subnet_ids = [module.b2c_ciam_test_network.private_subnet_ids]
-    local_private_route_table_ids = [module.b2c_ciam_test_network.private_route_table_id]
-    tg_id = var.root_existing_tgw_id
-    tgw_destination_cidr_block = var.root_tgw_destination_cidr_block
-
-}*/
-
-
-/*
-# 3.Centralized Identity Namespace Management Block
 module "dns_routing" {
   source               = "../../../modules/route53"
   environment          = var.root_environment
   global_tags          = var.tags
-  
-  # Connects directly to the live outputs of your network infrastructure
   local_vpc_id         = module.b2c_ciam_test_network.vpc_id
-  
-  # Parameter Mappings (Fed cleanly down from your centralized tfvars file)
   public_domain_name   = var.root_public_domain_name
-  #private_domain_names  = var.rhds_private_domain_name
-  #external_vpc_id      = var.external_vpc_id # The target CIAM VPC ID passed from your variable.
   private_domain_names = var.root_private_domains
-}*/
+  external_vpc_id      = var.external_ciam_vpc_id # The target CIAM VPC ID passed from your variable.
+  external_vpc_region = var.external_ciam_vpc_region
+}

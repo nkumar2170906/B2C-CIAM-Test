@@ -1,15 +1,15 @@
-/*
-variable "exteral_vpc_cidr" {
+
+variable "external_ciam_vpc_id" {
     type = string
     description = "The primary IP range allocation block for the VPC"
- }*/
+ }
 
-/*
-variable "b2c_ciam_test" {
+
+variable "external_ciam_vpc_region" {
     type = string
-    description = "b2c_ciam_test"
+    description = "External vpc region to connect"
   
-}*/
+}
 
 
 variable "vpc_name" {
@@ -22,12 +22,6 @@ variable "root_public_domain_name" {
     type = string
     description = "Public domain name"
 }
-/*
-variable "rhds_private_domain_name" {
-    type = string
-    description = "Private domain name"
-  
-}*/
 
 variable "aws_region" {
     type = string
@@ -68,17 +62,6 @@ variable "aws_availability_zones" {
     type = list(string)
     description = "Target AWS Availability Zones to map out the network infrastructure across"
 }
-/*
-variable "external_aws_account_id" {
-    type = string
-    description = "External client account id"
-}
-
-variable "external_vpc_id" {
-    type = string
-    description = "External vpc cidr"
-  
-}*/
 
 variable "root_environment" {
   type        = string
