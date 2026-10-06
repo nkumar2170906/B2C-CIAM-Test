@@ -19,7 +19,7 @@ module "b2c_ciam_test_network" {
   source               = "../../../modules/vpc"
   environment          = var.root_environment 
   vpc_name             = var.vpc_name
-  vpc_cidr             = var.b2c_ciam_test_cidr
+  vpc_cidr             = var.b2c_ciam_test_vpc_cidr
   public_subnet_cidrs  = var.b2c_ciam_test_public_subnet_cidrs  # For SCIM ALB (Public)
   private_subnet_cidrs = var.b2c_ciam_test_private_subnet_cidrs # For NLBs and EC2 Compute Tiers
   availability_zones   = var.aws_availability_zones
@@ -28,6 +28,22 @@ module "b2c_ciam_test_network" {
   # INTERCEPT AND PASS DOWN THE DYNAMIC NACL PERIMETER ENTRIES:
   public_nacl_ingress_rules = var.root_public_nacl_ingress
   public_nacl_egress_rules  = var.root_public_nacl_egress
+
+}
+
+# =========================================================================
+# 2. CROSS-ACCOUNT ROUTER LINKING TO EXISTING CENTRALIZED TGW
+# =========================================================================
+
+module "cross_account_router" {
+  source = "../../../modules/transit_gateway"
+  environment = var.root_environment
+  global_tags = var.tags
+  local_vpc_id = module.b2c_ciam_test_network.vpc_id
+  local_private_subnet_ids = module.b2c_ciam_test_network.private_subnet_ids
+  local_private_route_table_ids = [module.b2c_ciam_test_network.private_route_table_id]
+  tg_id = var.root_existing_tgw_id
+  tgw_destination_cidr_block = var.root_tgw_destination_cidr_block
 
 }
 
