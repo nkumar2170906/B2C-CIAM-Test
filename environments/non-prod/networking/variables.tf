@@ -74,11 +74,11 @@ variable "aws_availability_zones" {
     type = list(string)
     description = "Target AWS Availability Zones to map out the network infrastructure across"
 }
-
+/*
 variable "external_aws_account_id" {
     type = string
     description = "External client account id"
-}
+}*/
 
 variable "root_environment" {
   type        = string
