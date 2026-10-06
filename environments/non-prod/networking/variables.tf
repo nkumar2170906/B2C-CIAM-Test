@@ -11,12 +11,6 @@ variable "b2c_ciam_test" {
   
 }*/
 
-/*
-variable "external_vpc_id" {
-    type = string
-    description = "external vpc id"
-  
-}*/
 
 variable "vpc_name" {
     type = string
@@ -52,7 +46,7 @@ variable "external_ciam_vpc_cidr" {
   
 }*/
 
-variable "b2c_ciam_test_cidr" {
+variable "b2c_ciam_test_vpc_cidr" {
     type = string
     description = "A list of IP subnet blocks designated for secure private boundaries"
     //default = []
@@ -78,6 +72,12 @@ variable "aws_availability_zones" {
 variable "external_aws_account_id" {
     type = string
     description = "External client account id"
+}
+
+variable "external_vpc_id" {
+    type = string
+    description = "External vpc cidr"
+  
 }*/
 
 variable "root_environment" {
