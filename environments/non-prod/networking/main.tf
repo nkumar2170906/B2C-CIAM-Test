@@ -69,7 +69,7 @@ module "cross_account_router" {
 }*/
 
 
-
+/*
 # 3.Centralized Identity Namespace Management Block
 module "dns_routing" {
   source               = "../../../modules/route53"
@@ -84,4 +84,4 @@ module "dns_routing" {
   #private_domain_names  = var.rhds_private_domain_name
   external_vpc_id      = var.external_vpc_id # The target CIAM VPC ID passed from your variable.
   private_domain_names = var.root_private_domains
-}
+}*/
