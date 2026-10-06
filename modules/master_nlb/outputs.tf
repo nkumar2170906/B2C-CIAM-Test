@@ -1,9 +1,9 @@
-output "nlb_dns_name" {
-  description = "The structural internal AWS private DNS address mapping of the Network Load Balancer"
-  value       = aws_lb.master.dns_name
+output "nlb_arn" {
+  description = "The unique Amazon Resource Name matching the Master NLB"
+  value       = aws_lb.this.arn
 }
 
-output "nlb_zone_id" {
-  description = "The canonical route execution zone ID allocated to this Network Load Balancer by AWS"
-  value       = aws_lb.master.zone_id
+output "nlb_dns_name" {
+  description = "The private, internal DNS name allocated natively to the Master NLB"
+  value       = aws_lb.this.dns_name
 }

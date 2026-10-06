@@ -1,3 +1,9 @@
+
+#================================================================
+# VARIABLES DEFINITION FOR VPC CHILD MODULE
+#===============================================================
+
+
 variable "vpc_cidr" {
     type = string
     description = "The primary IP range allocation block for the VPC"

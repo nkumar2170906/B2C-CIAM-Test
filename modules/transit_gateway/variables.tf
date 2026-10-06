@@ -1,4 +1,9 @@
 
+#================================================================
+# VARIABLES DEFINITION FOR TRANSIT GATEWAY CHILD MODULE
+#===============================================================
+
+
 variable "tg_id" {
     type = string
      description = "The client's pre-existing centralized Transit Gateway ID"

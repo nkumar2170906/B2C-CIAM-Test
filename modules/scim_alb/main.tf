@@ -1,70 +1,72 @@
 # =========================================================================
-# 1. PUBLIC APPLICATION LOAD BALANCER (ALB)
+# 1. PUBLIC INTERNET-FACING APPLICATION LOAD BALANCER
 # =========================================================================
-resource "aws_lb" "scim" {
-  name               = "${var.environment}-scim-alb"
-  internal           = false # Public-facing internet edge gateway
+resource "aws_lb" "this" {
+  name               = "${var.environment}-scim-public-alb"
   load_balancer_type = "application"
-  security_groups    = var.security_group_ids
+  internal           = false # Enforces public internet-facing edge routing
   subnets            = var.public_subnet_ids
-
-  enable_deletion_protection = var.environment == "prod" ? true : false
+  security_groups    = var.security_group_ids
 
   tags = merge(var.global_tags, {
-    Name = "${var.environment}-scim-alb"
+    Name = "${var.environment}-scim-public-alb"
   })
 }
 
 # =========================================================================
-# 2. TARGET BINDING GROUPS & APP COUPLING
+# 2. TARGET GROUP ROUTING TO PRIVATE BACKEND PORT 8443
 # =========================================================================
-resource "aws_lb_target_group" "scim_api" {
-  name        = "${var.environment}-scim-tg"
-  port        = var.backend_app_port # Port where the SCIM gateway application listens on the EC2 instances
-  protocol    = "HTTP"               # Internal traffic from ALB to EC2 can traverse via clear text within the subnet layer
+resource "aws_lb_target_group" "scim_8443" {
+  name        = "${var.environment}-tg-scim-8443"
+  port        = var.backend_port # 🎯 MATCHES DIAGRAM: Routes traffic strictly to Port 8443
+  protocol    = "HTTP"
   vpc_id      = var.vpc_id
   target_type = "instance"
 
-  #Production-Ready Session Affinity Configuration
-
-  stickiness {
-    type                   = "lb_cookie" # AWS automatically injects an encrypted cookie to track the user session
-    cookie_duration        = var.cookie_duration_seconds # Customizable cookie lifespan passed down via variables
-    enabled                = var.enable_stickiness
-  }
-
   health_check {
-    enabled             = true
-    path                = var.health_check_path
-    port                = "traffic-port"
+    port                = var.backend_port
     protocol            = "HTTP"
+    path                = "/health"
     interval            = 30
-    timeout             = 5
-    healthy_threshold   = 3
-    unhealthy_threshold = 3
+    healthy_threshold   = 2
+    unhealthy_threshold = 2
   }
 
   tags = merge(var.global_tags, {
-    Name = "${var.environment}-scim-target-group"
+    Name = "${var.environment}-tg-scim-8443"
   })
 }
 
-# Automatically maps the Master EC2 node instance to this target group
-resource "aws_lb_target_group_attachment" "scim_master" {
-  target_group_arn = aws_lb_target_group.scim_api.arn
-  target_id        = var.master_instance_id # Direct inject parameter from the EC2 module outputs
-  port             = var.backend_app_port
+# =========================================================================
+# 3. TESTING MODE ONLY: PURE PORT 80 HTTP ROUTING STEP (NO SSL REQUIRED)
+# =========================================================================
+resource "aws_lb_listener" "http_80" {
+  load_balancer_arn = aws_lb.this.arn
+  port              = "80"
+  protocol          = "HTTP" # Bypasses all ACM checks cleanly for your personal test env
+
+  default_action {
+    type             = "forward"
+    target_group_arn = aws_lb_target_group.scim_8443.arn
+  }
 }
 
+resource "aws_lb_target_group_attachment" "scim_master" {
+  target_group_arn = aws_lb_target_group.scim_8443.arn
+  target_id        = var.master_instance_id 
+  port             = var.backend_port
+}
+
+/*
+############################################################################
 # =========================================================================
-# 3. INTERNET ROUTING TRAFFIC LISTENERS
+# 3. INTERNET-FACING SECURE LISTENER AND BACKEND TARGET ATTACHMENTS
 # =========================================================================
-resource "aws_lb_listener" "http" {
-  load_balancer_arn = aws_lb.scim.arn
+resource "aws_lb_listener" "http_redirect" {
+  load_balancer_arn = aws_lb.this.arn
   port              = "80"
   protocol          = "HTTP"
 
-  # Production Best Practice: Automatically redirects plain text HTTP traffic to secure HTTPS (443)
   default_action {
     type = "redirect"
 
@@ -75,3 +77,25 @@ resource "aws_lb_listener" "http" {
     }
   }
 }
+
+resource "aws_lb_listener" "https_443" {
+  load_balancer_arn = aws_lb.this.arn
+  port              = "443"
+  protocol          = "HTTPS"
+  ssl_policy        = "ELBSecurityPolicy-TLS13-1-2-2021-06"
+  certificate_arn   = var.acm_certificate_arn
+
+  default_action {
+    type             = "forward"
+    target_group_arn = aws_lb_target_group.scim_8443.arn
+  }
+}
+*/
+####################################################################
+
+resource "aws_lb_target_group_attachment" "scim_master" {
+  target_group_arn = aws_lb_target_group.scim_8443.arn
+  target_id        = var.master_instance_id # Targets the Master node exclusively as per blueprint
+  port             = var.backend_port
+}
+

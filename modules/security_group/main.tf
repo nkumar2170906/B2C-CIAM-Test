@@ -1,12 +1,10 @@
 # =========================================================================
-# 1. APPLICATION SECURITY GROUP CONTAINER (ZERO-TRUST DEFAULT TIER)
+# 1. APPLICATION SECURITY GROUP CONTAINER 
 # =========================================================================
 resource "aws_security_group" "this" {
   name        = "${var.environment}-${var.sg_name}-sg"
   description = "Managed by Terraform - Production Ready Default Layer for ${var.sg_name}"
   vpc_id      = var.vpc_id
-
-  # Dynamic ingress loop allows zero-downtime additions later.
   
   # Currently evaluates to a default-deny posture if ingress_rules list is empty.
   dynamic "ingress" {
@@ -20,7 +18,7 @@ resource "aws_security_group" "this" {
     }
   }
 
-  # Standard corporate default egress: Allows all outbound traffic for updates/patching
+  # Standard default egress: Allows all outbound traffic for updates/patching
   dynamic "egress" {
     for_each = var.egress_rules
     content {

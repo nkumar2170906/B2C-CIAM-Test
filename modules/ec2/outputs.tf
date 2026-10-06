@@ -1,14 +1,14 @@
 output "instance_ids" {
-  description = "A complete structural map containing instance keys and their respective AWS node identifiers"
+  description = "A clean mapping matrix linking instance configuration keys to their dynamic AWS resource IDs"
   value       = { for k, v in aws_instance.this : k => v.id }
 }
 
 output "instance_private_ips" {
-  description = "A mapping container holding internal network private IPs allocated across the nodes"
+  description = "The internal private IP addresses allocated dynamically across the private network interface nodes"
   value       = { for k, v in aws_instance.this : k => v.private_ip }
 }
 
-output "instance_public_ips" {
-  description = "A mapping container holding the persistent public Elastic IP addresses for authorized nodes"
-  value       = { for k, v in aws_eip.this : k => v.public_ip }
+output "secondary_network_interface_ids" {
+  description = "The raw identifiers of the secondary network interfaces (eth1) generated for authorized nodes"
+  value       = { for k, v in aws_network_interface.secondary : k => v.id }
 }

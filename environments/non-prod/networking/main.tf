@@ -46,10 +46,8 @@ module "cross_account_router" {
   local_private_route_table_ids = [module.b2c_ciam_test_network.private_route_table_id]
   tg_id = var.root_existing_tgw_id
   tgw_destination_cidr_block = var.root_tgw_destination_cidr_block
-  
 
 }
-
 
 # =========================================================
 #   3. ROUTE-53 BLOCK

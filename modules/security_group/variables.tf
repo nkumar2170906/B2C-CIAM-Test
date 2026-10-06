@@ -1,3 +1,8 @@
+
+#================================================================
+# VARIABLES DEFINITION FOR SECURITY GROUP CHILD MODULE
+#===============================================================
+
 variable "vpc_id" {
   type        = string
   description = "The target VPC ID where the security group resource will be anchored"

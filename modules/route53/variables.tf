@@ -1,3 +1,9 @@
+
+#================================================================
+# VARIABLES DEFINITION FOR ROUTE53 CHILD MODULE
+#===============================================================
+
+
 variable "public_domain_name" {
   type        = string
   description = "The registered top-level domain name for internet facing services (e.g., clientcompany.com)"

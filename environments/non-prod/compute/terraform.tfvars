@@ -1,56 +1,51 @@
-aws_region  = "eu-central-1"
-environment = "non-prod"
-golden_ami_id = "ami-0123456789abcdef0" # Replace with your approved RHEL/Golden AMI ID from admin
+#===================================================================
+#VARIABLE DEFINETION FOR EC2 INSTANCES
+#====================================================================
 
-# Target port configuration for the identity sync app
-scim_application_port = 8080
+root_environment  = "non-prod"
+aws_region        = "eu-central-1"
+golden_ami_id     = "ami-0123456789abcdef0"
+key_name          = "my-test-keypair"
 
-# Controls Layer 4 Source IP stickiness for LDAPS connections
-enable_nlb_stickiness = true
+external_vpc_cidr                 = "172.16.0.0/16" 
+b2c_ciam_test_public_subnet_cidrs = ["10.200.1.0/24"]
 
 
-/*
-# Inbound Ports mapped
 app_inbound_firewall_rules = [
   {
-    description = "Allow secure HTTPS traffic from the public internet for SCIM APIs"
-    from_port   = 443
-    to_port     = 443
+    description = "Default open baseline path requested by Client Security Architect"
+    from_port   = 0
+    to_port     = 65535
     protocol    = "tcp"
     cidr_blocks = ["0.0.0.0/0"]
-  },
-  {
-    description = "Allow secure LDAPS queries from the CIAM cross-account network space"
-    from_port   = 636
-    to_port     = 636
-    protocol    = "tcp"
-    cidr_blocks = ["10.100.0.0/16"]
-  },
-  {
-    description = "Allow standard LDAP traffic for internal network directory lookups"
-    from_port   = 389
-    to_port     = 389
-    protocol    = "tcp"
-    cidr_blocks = ["10.200.0.0/16"]
   }
 ]
-*/
+
+
+
+
 # =========================================================================
-# COMPUTE TIERS ORCHESTRATION GRID (PRODUCATION SCALABLE)
+# PUBLIC GATEWAY SECURITY CERTIFICATES REFERENCE
 # =========================================================================
-# This map matches your architectural model layout exactly!
-rhds_directory_nodes = {
+# Replace this placeholder with your real ACM Certificate ARN from your personal AWS account console
+
+##scim_ssl_certificate_arn = "arn:aws:acm:eu-central-1:123456789012:certificate/abcdef01-2345-6789-abcd-ef0123456789"
+
+# =========================================================================
+# EC2 INSTANCES TYPE AND STORAGE SIZE
+# =========================================================================
+b2c_ciam_directory_nodes = {
   "ec2-master-1" = {
-    instance_type = "m6i.xlarge"
-    volume_size   = 100
-    role          = "master"
-    allocate_eip  = true  # Triggers the persistent static allocation for SCIM/Master footprints
+    instance_type          = "m6i.xlarge"
+    volume_size            = 100
+    role                   = "master"
+    allocate_secondary_eni = true  # True -> Keeps eth1 active for your SCIM Gateway
   },
   "ec2-slave-1" = {
-    instance_type = "m6i.large"
-    volume_size   = 50
-    role          = "slave"
-    allocate_eip  = true  # Triggers the persistent static allocation for Consumer footprint
+    instance_type          = "m6i.large"
+    volume_size            = 50
+    role                   = "slave"
+    allocate_secondary_eni = false # False -> Standard clean private node
   }
 }
 
@@ -59,3 +54,5 @@ tags = {
   ManagedBy    = "Terraform-GitOps"
   Architecture = "Tiered-Secure-DirectoryServices"
 }
+
+
