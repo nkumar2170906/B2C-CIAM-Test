@@ -1,3 +1,51 @@
+#================================================================
+# VARIABLES DEFINITION FOR SCHIM ALB CHILD MODULE
+#===============================================================
+
+variable "environment" {
+  type        = string
+  description = "Operational stage environment namespace flag"
+}
+
+variable "vpc_id" {
+  type        = string
+  description = "The target core VPC identifier hosting the infrastructure"
+}
+
+variable "public_subnet_ids" {
+  type        = list(string)
+  description = "List of public subnet IDs where the ALB edge interfaces will sit"
+}
+
+variable "security_group_ids" {
+  type        = list(string)
+  description = "List of firewall security groups mounted onto the SCIM ALB"
+}
+
+variable "master_instance_id" {
+  type        = string
+  description = "The generated live AWS resource ID of the Master node"
+}
+
+variable "backend_port" {
+  type        = number
+  description = "The target private backend application listening port"
+}
+/*
+variable "acm_certificate_arn" {
+  type        = string
+  description = "The AWS Certificate Manager ARN used to terminate SSL at the ALB edge"
+}*/
+
+
+variable "global_tags" {
+  type        = map(string)
+  description = "Standard corporate resource labeling metadata mapping"
+  default     = {}
+}
+
+
+/*
 variable "environment" {
   type        = string
   description = "The target stage operational namespace context flag (e.g., non-prod or prod)"
@@ -53,3 +101,4 @@ variable "cookie_duration_seconds" {
   default     = 86400
 }
 
+*/

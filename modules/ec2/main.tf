@@ -1,5 +1,6 @@
+
 # =========================================================================
-# 1. CORE EC2 COMPUTE CLUSTER NODES
+# 1. PRIVATE COMPUTE CLUSTER INSTANCES MODULES
 # =========================================================================
 resource "aws_instance" "this" {
   for_each = var.cluster_nodes
@@ -10,12 +11,11 @@ resource "aws_instance" "this" {
   vpc_security_group_ids = var.security_group_ids
   key_name               = var.key_name
 
-  # Enterprise Standard Root Block Device Configuration
   root_block_device {
     volume_size           = each.value.volume_size
     volume_type           = "gp3"
     encrypted             = true
-    delete_on_termination = false # Prevents data loss if an instance is accidentally terminated
+    delete_on_termination = false
   }
 
   tags = merge(var.global_tags, {
@@ -25,25 +25,23 @@ resource "aws_instance" "this" {
 }
 
 # =========================================================================
-# 2. PERSISTENT NETWORKING BOUNDS (CONDITIONAL ELASTIC IPs)
+# 2. SEPARATE NETWORK INTERFACE (PROVISIONED EXCLUSIVELY FOR MASTER & SCIM)
 # =========================================================================
+resource "aws_network_interface" "secondary" {
+  for_each = { for k, v in var.cluster_nodes : k => v if v.allocate_secondary_eni }
 
-# Step A: Allocate Elastic IPs on AWS for instances that require a persistent public/static footprint
-resource "aws_eip" "this" {
-  for_each = { for k, v in var.cluster_nodes : k => v if v.allocate_eip }
-
-  domain = "vpc"
+  subnet_id       = var.subnet_id
+  security_groups = var.security_group_ids
 
   tags = merge(var.global_tags, {
-    Name = "${var.environment}-${each.key}-eip"
+    Name = "${var.environment}-${each.key}-secondary-eni"
   })
 }
 
-# Step B: Securely bind the allocated Elastic IP directly to the active cluster node instance
-resource "aws_eip_association" "this" {
-  for_each = { for k, v in var.cluster_nodes : k => v if v.allocate_eip }
+resource "aws_network_interface_attachment" "secondary_attach" {
+  for_each = { for k, v in var.cluster_nodes : k => v if v.allocate_secondary_eni }
 
-  instance_id   = aws_instance.this[each.key].id
-  allocation_id = aws_eip.this[each.key].id
+  instance_id          = aws_instance.this[each.key].id
+  network_interface_id = aws_network_interface.secondary[each.key].id
+  device_index         = 1 # Maps strictly to eth1 for SCIM Gateway traffic boundaries
 }
-

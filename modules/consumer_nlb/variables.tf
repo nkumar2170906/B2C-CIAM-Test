@@ -1,27 +1,25 @@
+#================================================================
+# VARIABLES DEFINITION FOR CONSUMER LOAD BALANCER CHILD MODULE
+#===============================================================
+
 variable "environment" {
   type        = string
-  description = "The target stage operational namespace context flag (e.g., non-prod or prod)"
+  description = "Operational stage environment namespace flag"
 }
 
 variable "vpc_id" {
   type        = string
-  description = "The structural network VPC ID identifier holding the NLB components"
+  description = "The target core VPC identifier hosting the infrastructure"
 }
 
-variable "private_subnet_ids" {
-  type        = list(string)
-  description = "List of private subnet IDs where the internal NLB endpoints reside"
+variable "subnet_id" {
+  type        = string
+  description = "The target private subnet ID where the NLB endpoints will reside"
 }
 
 variable "slave_instance_id" {
   type        = string
-  description = "The unique structural instance identifier representing your Slave EC2 node"
-}
-
-variable "enable_session_stickiness" {
-  type        = bool
-  description = "Toggle parameter to activate or deactivate Layer 4 Source IP session persistence rules"
-  default     = true
+  description = "The generated live AWS resource ID of the Slave/Consumer compute node"
 }
 
 variable "global_tags" {

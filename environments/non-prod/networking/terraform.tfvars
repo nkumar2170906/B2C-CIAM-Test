@@ -1,3 +1,7 @@
+# =========================================================================
+# CENTRAL ROOT MODULE VARIABLE DECLARATIONS FOR NETWORK LAYER
+# =========================================================================
+
 aws_region                        = "eu-central-1"
 root_environment                  = "non-prod"
 aws_availability_zones            = ["eu-central-1a", "eu-central-1b"]
@@ -6,7 +10,6 @@ root_existing_tgw_id              = "tgw-0556fec8e90da7112"
 root_tgw_destination_cidr_block   = "10.0.0.0/8"
 external_ciam_vpc_id              = "vpc-0d2ce2dd7a202c249"
 external_ciam_vpc_region          = "eu-central-1" 
-#external_aws_account_id          = "039714564399"  # The 12-digit AWS Account identifier for CIAM team
 
 
 # Explicit Non-Prod IP Allocations matching your architecture model
@@ -18,11 +21,10 @@ b2c_ciam_test_private_subnet_cidrs = ["10.200.2.0/24", "10.200.10.0/24"] # NLB S
 # =========================================================================
 # DOMAIN IDENTITY & CROSS-ACCOUNT DNS HANDSHAKE METADATA 
 # =========================================================================
-root_public_domain_name             = "nkumartest.com"          # The pre-owned public root domain
-#rhds_private_domain_name           = "master.nkumartest.com" # The enterprise private zone domain standard
+root_public_domain_name   = "nkumartest.com"          # The pre-owned public root domain
 root_private_domains = {
-  "primary-internal"   = "master.nkumartest.com"      # Zone #1 (Original)
-  "secondary-internal" = "consumer.nkumartest.com" # Zone #2 (NEW Private Zone!)
+  "primary-internal"      = "master.nkumartest.com"      # Zone #1 (Original)
+  "secondary-internal"    = "consumer.nkumartest.com" # Zone #2 (NEW Private Zone!)
 }
 
 
