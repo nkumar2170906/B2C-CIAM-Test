@@ -13,17 +13,20 @@ external_ciam_vpc_region          = "eu-central-1"
 
 
 # Explicit Non-Prod IP Allocations matching your architecture model
-b2c_ciam_test_vpc_cidr             = "10.200.0.0/24"
+#b2c_ciam_test_vpc_cidr             = "10.200.0.0/24"
 #b2c_ciam_test_public_subnet_cidrs  = ["10.200.1.0/24"]  # SCIM Public Subnet tier
 #b2c_ciam_test_private_subnet_cidrs = ["10.200.2.0/24", "10.200.10.0/24"] # NLB Subnet (2.0) and AZ1 Compute Tier (10.0)
+
+b2c_ciam_test_vpc_cidr = "10.200.0.0/16"
+
 b2c_ciam_test_public_subnet_cidrs = [
-  "10.200.10.0/27",  # Public Subnet #1 -> Tied to eu-central-1a (32 IPs)
-  "10.200.10.32/27"  # Public Subnet #2 -> Tied to eu-central-1b (32 IPs)
+  "10.200.1.0/25",   # Public Subnet #1 in eu-central-1a (128 IPs)
+  "10.200.1.128/25"  # Public Subnet #2 in eu-central-1b (128 IPs)
 ]
 
 b2c_ciam_test_private_subnet_cidrs = [
-  "10.200.10.64/27", # Private NLB Subnet (Index 0 - 32 IPs)
-  "10.200.10.96/27"  # Private Compute Subnet (Index 1 - 32 IPs)
+  "10.200.2.0/24",   # ➔ Index 0: Restored to your live NLB Subnet (Safe!)
+  "10.200.10.0/24"   # ➔ Index 1: Restored to your live AZ1 Compute Subnet (Safe!)
 ]
 
 
