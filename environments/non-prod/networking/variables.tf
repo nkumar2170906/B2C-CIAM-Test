@@ -11,11 +11,12 @@ variable "b2c_ciam_test" {
   
 }*/
 
+/*
 variable "external_vpc_id" {
     type = string
     description = "external vpc id"
   
-}
+}*/
 
 variable "vpc_name" {
     type = string
