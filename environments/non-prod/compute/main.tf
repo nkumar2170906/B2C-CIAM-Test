@@ -17,9 +17,9 @@ provider "aws" {
 data "terraform_remote_state" "networking" {
   backend = "s3"
   config = {
-    bucket = "client-b2c-ciam-tfstate-nonprod"
+    bucket = "b2c-ciam-tfstate-nonprod"
     key    = "non-prod/networking/terraform.tfstate"
-    region = var.aws_region
+    region = eu-central-1
   }
 }
 
