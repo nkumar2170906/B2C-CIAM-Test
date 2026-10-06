@@ -33,3 +33,25 @@ variable "global_tags" {
   description = "Corporate cloud inventory labeling metadata tags"
   default     = {}
 }
+
+variable "tg_id" {
+    type = string
+     description = "The client's pre-existing centralized Transit Gateway ID"
+
+}
+
+variable "local_private_route_table_ids" {
+    type = list(string)
+    description = "List of private route table IDs passed from the core VPC module"
+}
+
+variable "tgw_destination_cidr_block" {
+  type        = string
+  description = "The destination network block address to route through the centralized TGW"
+}
+
+/*
+variable "existing_transit_gateway_id" {
+  type        = string
+  description = "The target AWS ID string of the client's existing centralized TGW (e.g., tgw-0123456789abcdef0)"
+}*/
