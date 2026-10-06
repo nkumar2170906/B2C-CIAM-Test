@@ -13,7 +13,7 @@ provider "aws" {
   region = var.aws_region
 }
 
-# Fetch live network parameters from Layer 1 state caching
+# Fetch live network parameters from Layer 1 state caching.
 data "terraform_remote_state" "networking" {
   backend = "s3"
   config = {
@@ -83,7 +83,7 @@ module "consumer_nlb" {
   vpc_id             = data.terraform_remote_state.networking.outputs.vpc_id
   
   # Automatically places the NLB interface into Private Subnet 0 (Index 0: 10.186.24.64/27)
-  subnet_id          = data.terraform_remote_state.networking.outputs.private_subnet_ids
+  subnet_id          = data.terraform_remote_state.networking.outputs.private_subnet_ids[0]
   
   # Passes down the newly built dynamic slave instance target directly from your compute output grid mappings
   slave_instance_id  = module.b2c_ciam_cluster.instance_ids["ec2-slave-1"]
