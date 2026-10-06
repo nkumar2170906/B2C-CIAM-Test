@@ -82,10 +82,10 @@ module "consumer_nlb" {
   # Extracts the core network properties dynamically from the live Layer 1 state S3 bucket
   vpc_id             = data.terraform_remote_state.networking.outputs.vpc_id
   
-  # Automatically places the NLB interface into Private Subnet 0 (Index 0: 10.186.24.64/27)
+  #Automatically places the NLB interface into Private Subnet 0 (Index 0: 10.186.24.64/27)
   subnet_id          = data.terraform_remote_state.networking.outputs.private_subnet_ids[0]
   
-  # Passes down the newly built dynamic slave instance target directly from your compute output grid mappings
+  #  Passes down the newly built dynamic slave instance target directly from your compute output grid mappings
   slave_instance_id  = module.b2c_ciam_cluster.instance_ids["ec2-slave-1"]
 
   # DEPENDENCY GATEWAY: Prevents the NLB from building until the backend instance exists!
