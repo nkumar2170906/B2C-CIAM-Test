@@ -4,8 +4,8 @@
 
 root_environment  = "non-prod"
 aws_region        = "eu-central-1"
-golden_ami_id     = "ami-0123456789abcdef0"
-key_name          = "my-test-keypair"
+golden_ami_id     = "ami-027198f65e9f969f8"
+key_name          = null
 
 external_vpc_cidr                 = "172.16.0.0/16" 
 b2c_ciam_test_public_subnet_cidrs = ["10.200.1.0/24"]
@@ -21,9 +21,6 @@ app_inbound_firewall_rules = [
   }
 ]
 
-
-
-
 # =========================================================================
 # PUBLIC GATEWAY SECURITY CERTIFICATES REFERENCE
 # =========================================================================
@@ -36,13 +33,13 @@ app_inbound_firewall_rules = [
 # =========================================================================
 b2c_ciam_directory_nodes = {
   "ec2-master-1" = {
-    instance_type          = "m6i.xlarge"
+    instance_type          = "t2.micro"
     volume_size            = 100
     role                   = "master"
     allocate_secondary_eni = true  # True -> Keeps eth1 active for your SCIM Gateway
   },
   "ec2-slave-1" = {
-    instance_type          = "m6i.large"
+    instance_type          = "t2.micro"
     volume_size            = 50
     role                   = "slave"
     allocate_secondary_eni = false # False -> Standard clean private node
