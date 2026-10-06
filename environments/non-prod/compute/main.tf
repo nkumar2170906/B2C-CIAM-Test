@@ -13,7 +13,7 @@ provider "aws" {
   region = var.aws_region
 }
 
-# Fetch live network parameters from Layer 1 state caching
+# Fetch live network parameters from Layer 1 state caching.
 data "terraform_remote_state" "networking" {
   backend = "s3"
   config = {
