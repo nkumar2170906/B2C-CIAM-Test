@@ -9,7 +9,8 @@ output "public_zone_id" {
   value       = aws_route53_zone.public.zone_id 
 }
 
-output "private_zone_id" {
-  description = "The unique network identifier of your internal private hosted zone"
-  value       = aws_route53_zone.private.id
+output "private_zone_ids" {
+  description = "A mapping container returning your active private hosted zone IDs"
+  value       = { for k, v in aws_route53_zone.private : k => v.zone_id }
 }
+

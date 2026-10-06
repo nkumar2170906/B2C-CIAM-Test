@@ -3,9 +3,9 @@ variable "public_domain_name" {
   description = "The registered top-level domain name for internet facing services (e.g., clientcompany.com)"
 }
 
-variable "private_domain_name" {
-  type        = string
-  description = "The custom private internal naming namespace (e.g., internal.clientcompany.com)"
+variable "private_domain_names" {
+  type        = map(string)
+  description = "A mapping container holding all target internal private domains"
 }
 
 variable "local_vpc_id" {
