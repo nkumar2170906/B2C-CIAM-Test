@@ -53,7 +53,7 @@ resource "aws_lb_listener" "http_80" {
 
 resource "aws_lb_target_group_attachment" "scim_master" {
   target_group_arn = aws_lb_target_group.scim_8443.arn
-  target_id        = var.master_instance_id 
+  target_id        = var.master_instance_id  # Targets the Master node exclusively as per blueprint
   port             = var.backend_port
 }
 
@@ -93,9 +93,5 @@ resource "aws_lb_listener" "https_443" {
 */
 ####################################################################
 
-resource "aws_lb_target_group_attachment" "scim_master" {
-  target_group_arn = aws_lb_target_group.scim_8443.arn
-  target_id        = var.master_instance_id # Targets the Master node exclusively as per blueprint
-  port             = var.backend_port
-}
+
 
