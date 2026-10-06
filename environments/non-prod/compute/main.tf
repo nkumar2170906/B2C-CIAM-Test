@@ -19,7 +19,7 @@ data "terraform_remote_state" "networking" {
   config = {
     bucket = "b2c-ciam-tfstate-nonprod"
     key    = "non-prod/networking/terraform.tfstate"
-    region = eu-central-1
+    region = "eu-central-1"
   }
 }
 
