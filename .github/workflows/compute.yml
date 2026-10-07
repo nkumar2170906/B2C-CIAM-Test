@@ -305,33 +305,33 @@ jobs:
           ls -la docs topology-map.png || true
         working-directory: "."
 
-     # - name: Create or verify pull request
-     #   id: pr
-     #   env:
-     #     GH_TOKEN: ${{ github.token }}
-     #     SOURCE_SHA: ${{ needs.terraform_plan.outputs.source_sha }}
-     #     BASE_SHA: ${{ needs.terraform_plan.outputs.base_sha }}
-     #   shell: bash
-     #   run: |
-     #     pr_url="$(gh pr list --base main --head feature/RHDS-Terraform --state open --json url --jq '.[0].url // empty')"
+      - name: Create or verify pull request
+        id: pr
+        env:
+          GH_TOKEN: ${{ github.token }}
+          SOURCE_SHA: ${{ needs.terraform_plan.outputs.source_sha }}
+          BASE_SHA: ${{ needs.terraform_plan.outputs.base_sha }}
+        shell: bash
+        run: |
+          pr_url="$(gh pr list --base main --head feature/RHDS-Terraform --state open --json url --jq '.[0].url // empty')"
 
-     #     if [[ -z "$pr_url" ]]; then
-     #       pr_url="$(gh pr create --base main --head feature/RHDS-Terraform \
-     #         --title "Promote feature/RHDS-Terraform to main" \
-     #         --body "Terraform plan passed for commit $SOURCE_SHA. Security scan completed successfully.")"
-     #     fi
+          if [[ -z "$pr_url" ]]; then
+            pr_url="$(gh pr create --base main --head feature/RHDS-Terraform \
+              --title "Promote feature/RHDS-Terraform to main" \
+              --body "Terraform plan passed for commit $SOURCE_SHA. Security scan completed successfully.")"
+          fi
 
-      #    if [[ -n "$pr_url" ]]; then
-      #      pr_head="$(gh pr view "$pr_url" --json headRefOid --jq '.headRefOid')"
-      #      pr_base="$(gh pr view "$pr_url" --json baseRefOid --jq '.baseRefOid')"
+          if [[ -n "$pr_url" ]]; then
+            pr_head="$(gh pr view "$pr_url" --json headRefOid --jq '.headRefOid')"
+            pr_base="$(gh pr view "$pr_url" --json baseRefOid --jq '.baseRefOid')"
 
-      #      if [[ "$pr_head" != "$SOURCE_SHA" || "$pr_base" != "$BASE_SHA" ]]; then
-      #        echo "The PR head or main base changed after planning. Push an updated feature/RHDS-Terraform branch and rerun." >&2
-      #        exit 1
-      #      fi
-      #    fi
+            if [[ "$pr_head" != "$SOURCE_SHA" || "$pr_base" != "$BASE_SHA" ]]; then
+              echo "The PR head or main base changed after planning. Push an updated feature/RHDS-Terraform branch and rerun." >&2
+              exit 1
+            fi
+          fi
 
-      #    echo "url=$pr_url" >> "$GITHUB_OUTPUT"
+          echo "url=$pr_url" >> "$GITHUB_OUTPUT"
 
       - name: Upload Visual Topology Artifact
         uses: actions/upload-artifact@v4
