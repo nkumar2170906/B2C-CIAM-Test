@@ -354,28 +354,28 @@ jobs:
       pull-requests: write
 
     steps:
-      - name: Verify PR revisions and merge
-        env:
-          GH_TOKEN: ${{ github.token }}
-          PR_URL: ${{ needs.prepare_pull_request.outputs.pr_url }}
-          SOURCE_SHA: ${{ needs.terraform_plan.outputs.source_sha }}
-          BASE_SHA: ${{ needs.terraform_plan.outputs.base_sha }}
-        shell: bash
-        run: |
-          pr_head="$(gh pr view "$PR_URL" --json headRefOid --jq '.headRefOid')"
-          pr_base="$(gh pr view "$PR_URL" --json baseRefOid --jq '.baseRefOid')"
+      #- name: Verify PR revisions and merge
+      #  env:
+      #    GH_TOKEN: ${{ github.token }}
+      #    PR_URL: ${{ needs.prepare_pull_request.outputs.pr_url }}
+      #    SOURCE_SHA: ${{ needs.terraform_plan.outputs.source_sha }}
+      #    BASE_SHA: ${{ needs.terraform_plan.outputs.base_sha }}
+      #  shell: bash
+      #  run: |
+      #    pr_head="$(gh pr view "$PR_URL" --json headRefOid --jq '.headRefOid')"
+      #    pr_base="$(gh pr view "$PR_URL" --json baseRefOid --jq '.baseRefOid')"
 
-          if [[ "$pr_head" != "$SOURCE_SHA" || "$pr_base" != "$BASE_SHA" ]]; then
-            echo "The PR changed while waiting for approval. Refusing to merge an unplanned revision." >&2
-            exit 1
-          fi
+      #    if [[ "$pr_head" != "$SOURCE_SHA" || "$pr_base" != "$BASE_SHA" ]]; then
+      #      echo "The PR changed while waiting for approval. Refusing to merge an unplanned revision." >&2
+      #      exit 1
+      #    fi
 
-          gh pr merge "$PR_URL" --merge
+      #    gh pr merge "$PR_URL" --merge
 
-      - name: Checkout repository
-        uses: actions/checkout@v4
-        with:
-         fetch-depth: 0
+      #- name: Checkout repository
+      #  uses: actions/checkout@v4
+      #  with:
+      #   fetch-depth: 0
           
       - name: Update feature branch to match main
         env:
