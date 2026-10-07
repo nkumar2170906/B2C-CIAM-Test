@@ -79,7 +79,7 @@ module "consumer_nlb" {
   environment        = var.root_environment
   global_tags        = var.tags
   
-  # Extracts the core network properties dynamically from the live Layer 1 state S3 bucket
+  # Extracts the core network properties dynamically from the live Layer 1 state S3 bucket  
   vpc_id             = data.terraform_remote_state.networking.outputs.vpc_id
   
   # Automatically places the NLB interface into Private Subnet 0 (Index 0: 10.186.24.64/27)
