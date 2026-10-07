@@ -13,7 +13,7 @@ terraform {
 provider "aws" {
   region = var.aws_region
 }
-
+/*
 # =========================================================================
 # 1. PRIMARY NETWORK TIERS BLOCK  - VPC
 # =========================================================================
@@ -62,4 +62,4 @@ module "dns_routing" {
   private_domain_names = var.root_private_domains
   external_vpc_id      = var.external_ciam_vpc_id # The target CIAM VPC ID passed from your variable.
   external_vpc_region = var.external_ciam_vpc_region
-}
+}*/
