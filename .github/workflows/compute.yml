@@ -1,4 +1,4 @@
-name: "Infrastructure Pipeline: Compute[ec2] Deployment Flow"
+name: "Infrastructure Pipeline: Compute Deployment Flow"
 
 on:
   push:
@@ -258,7 +258,7 @@ jobs:
 
           if [[ ! -f environments/non-prod/compute/plan.json ]]; then
             echo "environments/non-prod/compute/plan.json missing; writing fallback topology."
-            echo 'digraph G { "VPC Layer" -> "EC2 Component"; }' > docs/topology.dot
+            echo 'digraph G { "VPC Layer" -> "S3 Backend Storage Component"; }' > docs/topology.dot
             dot -Tpng docs/topology.dot -o topology-map.png
             exit 0
           fi
@@ -273,7 +273,7 @@ jobs:
           try:
               data = json.loads(plan.read_text(encoding="utf-8"))
           except Exception:
-              out.write_text('digraph G { "VPC Layer" -> "EC2 Component"; }\n', encoding="utf-8")
+              out.write_text('digraph G { "VPC Layer" -> "S3 Backend Storage Component"; }\n', encoding="utf-8")
               raise SystemExit(0)
 
           lines = ['digraph G {']
@@ -371,7 +371,7 @@ jobs:
           fi
 
           gh pr merge "$PR_URL" --merge
-      
+
       - name: Checkout repository
         uses: actions/checkout@v4
         with:
@@ -388,6 +388,7 @@ jobs:
           git checkout feature/RHDS-Terraform
           git rebase origin/main
           git push origin feature/RHDS-Terraform --force-with-lease
+
 
   terraform_apply:
     name: "4. Apply merged code"
