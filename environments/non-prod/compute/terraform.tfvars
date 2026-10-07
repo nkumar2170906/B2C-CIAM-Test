@@ -3,7 +3,7 @@
 #===================================================================
 #VARIABLE DEFINETION FOR EC2 INSTANCES
 #====================================================================
-
+/*
 root_environment  = "non-prod"
 aws_region        = "eu-central-1"
 golden_ami_id     = "ami-027198f65e9f969f8"
@@ -29,7 +29,7 @@ app_inbound_firewall_rules = [
 # Replace this placeholder with your real ACM Certificate ARN from your personal AWS account console
 
 ##scim_ssl_certificate_arn = "arn:aws:acm:eu-central-1:123456789012:certificate/abcdef01-2345-6789-abcd-ef0123456789"
-
+/*
 # =========================================================================
 # EC2 INSTANCES TYPE AND STORAGE SIZE
 # =========================================================================
