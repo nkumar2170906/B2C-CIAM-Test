@@ -7,7 +7,7 @@ variable "aws_region" {
   description = "The target AWS geographic deployment region"
   default     = "eu-central-1"
 }
-
+/*
 variable "root_environment" {
   type        = string
   description = "Operational stage environment namespace flag (e.g., non-prod)"

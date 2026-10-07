@@ -12,7 +12,7 @@ terraform {
 provider "aws" {
   region = var.aws_region
 }
-
+/*
 # Fetch live network parameters from Layer 1 state caching.
 data "terraform_remote_state" "networking" {
   backend = "s3"
@@ -23,6 +23,7 @@ data "terraform_remote_state" "networking" {
   }
 }
 
+/*
 # =========================================================================
 # EC2 CLUSTER TIERS DEPLOYMENT
 # =========================================================================
@@ -79,7 +80,7 @@ module "consumer_nlb" {
   environment        = var.root_environment
   global_tags        = var.tags
   
-  # Extracts the core network properties dynamically from the live Layer 1 state S3 bucket
+  # Extracts the core network properties dynamically from the live Layer 1 state S3 bucket  
   vpc_id             = data.terraform_remote_state.networking.outputs.vpc_id
   
   # Automatically places the NLB interface into Private Subnet 0 (Index 0: 10.186.24.64/27)
@@ -172,3 +173,4 @@ module "compute_firewall" {
   ]
 }
 
+*/

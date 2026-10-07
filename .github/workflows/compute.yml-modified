@@ -1,0 +1,222 @@
+name: "Infrastructure Pipeline: Compute Deployment Flow"
+
+on:
+  push:
+    branches:
+      - feature/RHDS-Terraform
+    paths:
+      - "environments/non-prod/compute/**"
+      - "modules/ec2/**"
+      - "modules/security_group/**"
+      - "modules/scim_alb/**"
+      - "modules/master_nlb/**"
+      - "modules/consumer_nlb/**" 
+
+  pull_request:
+    branches:
+      - main
+    paths: 
+      - "environments/non-prod/compute/**"
+
+permissions:
+  contents: read
+  pull-requests: write
+
+jobs:
+  terraform_plan:
+    name: "1. Run Terraform Plan"
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      id-token: write
+
+    outputs:
+      source_sha: ${{ steps.revision.outputs.source_sha }}
+      source_tree: ${{ steps.revision.outputs.source_tree }}
+      base_sha: ${{ steps.revision.outputs.base_sha }}
+      has_changes: ${{ steps.revision.outputs.has_changes }}
+
+    steps:
+      - name: Checkout Repository
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Record source and main revisions
+        id: revision
+        shell: bash
+        run: |
+          source_sha="$(git rev-parse HEAD)"
+          source_tree="$(git rev-parse 'HEAD^{tree}')"
+          git fetch origin main
+          base_sha="$(git rev-parse origin/main)"
+
+          if ! git merge-base --is-ancestor "$base_sha" "$source_sha"; then
+            echo "The feature/RHDS-Terraform branch must include the current main branch before promotion." >&2
+            exit 1
+          fi
+
+          commit_count="$(git rev-list --count "$base_sha..$source_sha")"
+          if [[ "$commit_count" -eq 0 ]]; then
+            echo "No commits to promote; feature/RHDS-Terraform already matches main."
+            echo "has_changes=false" >> "$GITHUB_OUTPUT"
+          else
+            echo "has_changes=true" >> "$GITHUB_OUTPUT"
+          fi
+
+          echo "source_sha=$source_sha" >> "$GITHUB_OUTPUT"
+          echo "source_tree=$source_tree" >> "$GITHUB_OUTPUT"
+          echo "base_sha=$base_sha" >> "$GITHUB_OUTPUT"
+
+      - name: Setup Terraform
+        uses: hashicorp/setup-terraform@v3
+        with:
+          terraform_version: "1.16.2"
+          terraform_wrapper: false
+
+      - name: Configure AWS Credentials
+        uses: aws-actions/configure-aws-credentials@v4
+        with:
+          role-to-assume: ${{ secrets.AWS_NONPROD_OIDC_ROLE_ARN }}
+          aws-region: eu-central-1
+
+      - name: Show AWS Caller Identity
+        run: aws sts get-caller-identity
+
+      - name: Terraform Init
+        run: terraform init
+        working-directory: "./environments/non-prod/compute"
+
+      - name: Terraform Validate
+        run: terraform validate
+        working-directory: "./environments/non-prod/compute"
+
+      - name: Terraform Plan
+        run: terraform plan -input=false -out=tfplan
+        working-directory: "./environments/non-prod/compute"
+
+      - name: Upload Terraform Plan
+        uses: actions/upload-artifact@v4
+        with:
+          name: terraform-plan
+          path: ./environments/non-prod/compute/tfplan
+          retention-days: 1
+          if-no-files-found: error
+
+      - name: Record no-change marker
+        if: ${{ steps.revision.outputs.has_changes == 'false' }}
+        shell: bash
+        run: |
+          echo "No commits to promote; feature/RHDS-Terraform already matches main." > no-changes.txt
+
+      - name: Upload no-change artifact
+        if: ${{ steps.revision.outputs.has_changes == 'false' }}
+        uses: actions/upload-artifact@v4
+        with:
+          name: terraform-plan-no-changes
+          path: ./no-changes.txt
+          retention-days: 1
+          if-no-files-found: error
+
+  prepare_pull_request:
+    name: "2. Prepare PR to main"
+    needs:
+      - terraform_plan
+    if: needs.terraform_plan.outputs.has_changes == 'true'
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      pull-requests: write
+      id-token: write
+
+    outputs:
+      pr_url: ${{ steps.pr.outputs.url }}
+
+    steps:
+      - name: Checkout Repository
+        uses: actions/checkout@v4
+        with:
+          ref: ${{ needs.terraform_plan.outputs.source_sha }}
+
+      - name: Setup Terraform
+        uses: hashicorp/setup-terraform@v3
+        with:
+          terraform_version: "1.16.2"
+          terraform_wrapper: false
+
+      - name: Configure AWS Credentials
+        uses: aws-actions/configure-aws-credentials@v4
+        with:
+          role-to-assume: ${{ secrets.AWS_NONPROD_OIDC_ROLE_ARN }}
+          aws-region: eu-central-1
+
+      - name: Download Terraform Plan Artifact
+        uses: actions/download-artifact@v4
+        with:
+          name: terraform-plan
+          path: ./environments/non-prod/compute
+
+      - name: Terraform Init
+        run: terraform init
+        working-directory: "./environments/non-prod/compute"
+
+      - name: Transform Plan to JSON
+        run: |
+          terraform show -json tfplan > plan.json
+          mkdir -p docs
+        working-directory: "./environments/non-prod/compute"
+
+      - name: Generate Graphical Architecture Diagram (safe version)
+        shell: bash
+        run: |
+          set -euo pipefail
+          echo "Installing Graphviz..."
+          sudo apt-get update -y
+          sudo apt-get install -y graphviz python3
+          mkdir -p docs
+
+          if [[ ! -f environments/non-prod/compute/plan.json ]]; then
+            echo "environments/non-prod/compute/plan.json missing; writing fallback topology."
+            echo 'digraph G { "VPC Layer" -> "S3 Backend" }' > docs/topology.dot
+          else
+            python3 -c '
+            import json, sys
+            try:
+                with open("environments/non-prod/compute/plan.json") as f: data = json.load(f)
+                print("digraph G {")
+                print("  rankdir=LR;")
+                print("  node [shape=box, style=filled, color=lightblue];")
+                changes = data.get("resource_changes", [])
+                for c in changes:
+                    addr = c.get("address", "unknown")
+                    actions = c.get("change", {}).get("actions", [])
+                    act_str = ",".join(actions)
+                    print(f"  \"{addr}\" [label=\"{addr}\\n({act_str})\"];")
+                print("}")
+    except Exception as e:
+        print("digraph G { error [label=\"Failed to parse plan JSON\"]} ") ' > docs/topology.dot
+     fi
+     dot -Tpng docs/topology.dot -o docs/topology.png
+
+    -name: Create or View Pull Request
+    id: pr
+    shell: bash
+    env:
+          AWS_DEFAULT_REGION: eu-central-1
+          AWS_REGION: eu-central-1
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          SOURCE_SHA: ${{ needs.terraform_plan.outputs.source_sha }}
+          BASE_SHA: ${{ needs.terraform_plan.outputs.base_sha }}
+          run: |
+            pr_url="$(gh pr list --base main --head feature/RHDS-Terraform --state open --json url --jq '..url // empty')"
+            
+            if [[ -z "$pr_url" ]]; then
+                echo "📝 No open PR detected for branch feature/RHDS-Terraform. Creating new promotion pull request..."
+                pr_url="$(gh pr create --base main --head feature/RHDS-Terraform \
+                --title "Promote feature/RHDS-Terraform to main" \
+                --body "Terraform plan passed for commit $SOURCE_SHA. Ready for infrastructure promote validation review.")"
+            else
+                echo " Active Pull Request is already open and tracking correctly at: $pr_url"
+            fi
+            
+            echo "url=$pr_url" >> "$GITHUB_OUTPUT"

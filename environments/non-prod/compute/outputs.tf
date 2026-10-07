@@ -1,7 +1,7 @@
 # =========================================================================
 # ROOT COMPUTE MODULE CORE METRICS OUTPUTS
 # =========================================================================
-
+/*
 output "deployed_instance_ids" {
   description = "The generated live AWS instance identifiers for your cluster nodes"
   value       = module.b2c_ciam_cluster.instance_ids
@@ -26,3 +26,4 @@ output "public_scim_gateway_dns" {
   description = "The internet-facing endpoint address matching your public SCIM ALB"
   value       = module.public_scim_gateway.alb_dns_name
 }
+*/
